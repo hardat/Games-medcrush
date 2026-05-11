@@ -236,10 +236,17 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
   <div class="wlc-icons">💊 💉 🩺 🧬 🩹 🧪</div>
   <div class="wlc-logo">MED CRUSH</div>
   <div class="wlc-sub">Match Medicine · Heal the World</div>
+  <!-- Yesterday's champion banner (populated by JS) -->
+  <div id="yesterday-champ" style="display:none;background:#111128;border:1px solid #2a2a4a;border-radius:12px;padding:12px 16px;margin-bottom:12px;max-width:290px;font-size:13px;color:#888;text-align:center;line-height:1.6;"></div>
+
   <div class="wlc-btns">
     <button class="wb wb-primary" onclick="gotoGame()">▶&nbsp; Play Now</button>
     <button class="wb wb-outline" onclick="gotoLogin()">🏅&nbsp; Login &amp; Save Scores</button>
     <button class="wb wb-outline" style="border-color:#c084fc;color:#c084fc;" onclick="gotoRules()">📖 How to Play &amp; Rules</button>
+    <button class="wb wb-outline" style="border-color:#25d366;color:#25d366;" onclick="joinWAGroup()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+      Join Champions Group
+    </button>
   </div>
 </div>
 
@@ -565,6 +572,7 @@ const LEVEL_GOALS = [500,1200,2500,4500,7000,10000,15000,21000,28000,36000];
 let board=[], selected=null, score=0, moves=0, level=0, animating=false;
 let gameEnded=false;   // extra guard so gameOver fires only once
 let lastScore=0;
+let referralBonus=0;   // bonus pts from referral link
 
 /* ╔═══════════════════════════════════════════╗
    ║  LOCAL STORAGE                            ║
@@ -629,7 +637,11 @@ function showErr(id,msg){ const e=document.getElementById(id); e.textContent=msg
 function rnd(){ return Math.floor(Math.random()*TYPES.length); }
 
 function startGame(){
-  score=0; moves=0; level=0; selected=null; animating=false; gameEnded=false; lastScore=0;
+  score=referralBonus; moves=0; level=0; selected=null; animating=false; gameEnded=false; lastScore=0;
+  if(referralBonus>0){
+    setTimeout(()=>showMsg('🎁 +'+referralBonus+' Referral Bonus!'),400);
+    referralBonus=0; // only once
+  }
   board=Array.from({length:GRID},()=>Array.from({length:GRID},rnd));
   while(hasMatches()) board=Array.from({length:GRID},()=>Array.from({length:GRID},rnd));
   closeOv('ov-gameover');
@@ -1286,146 +1298,81 @@ function showRankOv(name,phone){
   body+=`<br><br>Share and challenge your friends!`;
   document.getElementById('rk-body').innerHTML=body;
   const stats=getStats();
-  buildShareBtns('rk-share',name,stats.best||lastScore);
+  buildShareBtns('rk-share',me?me.name:name,stats.best||lastScore);
   openOv('ov-rank');
 }
 
 /* ╔═══════════════════════════════════════════╗
    ║  SHARE BUTTONS                            ║
-   ╚═══════════════════════════════════════════╝
-   Facebook: sharer URL works BUT needs the page to have
-   og:title/og:image meta tags. We add those dynamically.
-   Instagram: no web share API — best UX is copy text + open app.
-   WhatsApp:  wa.me deep link — works on mobile & desktop.
-   Native Share: Web Share API on mobile Chrome/Safari — best UX.
-   Copy Link:  universal fallback.
-*/
+   ╚═══════════════════════════════════════════╝ */
 function buildShareBtns(cid, name, top){
-  const n    = (name||'A Friend').trim();
-  const msg  = n + ' scored ' + top.toLocaleString() + ' pts on Med Crush! 💊 Can you beat them? Play here: ' + GAME_URL;
-  const igMsg= n + ' scored ' + top.toLocaleString() + ' pts on Med Crush! 💊 Think you can beat that? 👇\n' + GAME_URL;
-
-  // Facebook — only URL, no quote (Facebook stripped quote param in 2023)
-  const fbURL = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(GAME_URL);
-
-  // WhatsApp deep link — works on mobile app and web
-  const waURL = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(msg);
-
-  // Twitter/X
-  const twURL = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(msg);
-
+  const n   = (name||'A Friend').trim();
+  const refURL = me ? buildReferralURL(me.name) : GAME_URL;
+  const msg = n+' scored '+top.toLocaleString()+' pts on Med Crush! 💊 Can you beat them? Play: '+refURL;
+  const waURL = 'https://api.whatsapp.com/send?text='+encodeURIComponent(msg);
+  const twURL = 'https://twitter.com/intent/tweet?text='+encodeURIComponent(msg);
+  // Facebook dialog share — uses og: meta tags on the page for the preview card
+  const fbURL = 'https://www.facebook.com/dialog/share?app_id=966242223397117&display=popup&href='+encodeURIComponent(refURL)+'&redirect_uri='+encodeURIComponent(refURL);
   const el = document.getElementById(cid);
   if(!el) return;
-
+  window._shareData = {msg, waURL, twURL, fbURL, n, top, refURL};
   el.innerHTML = `
-    <button class="sbtn sfb" onclick="shareToFacebook()">
+    <button class="sbtn sfb" onclick="shareFB()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>Facebook
     </button>
-    <button class="sbtn swa" onclick="shareToWhatsApp()">
+    <button class="sbtn swa" onclick="shareWA()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>WhatsApp
     </button>
-    <button class="sbtn sig" onclick="shareToInstagram()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>Instagram
+    <button class="sbtn" style="background:#1d9bf0;color:#fff;" onclick="shareTW()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.259 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>X
     </button>
-    <button class="sbtn" style="background:#1d9bf0;color:#fff;" onclick="shareToTwitter()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.259 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>X / Twitter
+    <button class="sbtn" style="background:#4ade80;color:#000;font-weight:800;" onclick="nativeShare()">
+      📤 Share
     </button>
-    <button class="sbtn" style="background:#2a2a4a;color:#aaa;border:1px solid #3a3a5a;" onclick="copyLink()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>Copy Link
-    </button>
-    ${navigator.share ? '<button class="sbtn" style="background:#4ade80;color:#000;font-weight:800;" onclick="nativeShare()">📤 Share</button>' : ''}
-  `;
-
-  // Store current share data for button handlers
-  window._shareData = { msg, igMsg, fbURL, waURL, twURL, n, top };
+    <button class="sbtn" style="background:#1a1a2e;color:#aaa;border:1px solid #2a2a4a;" onclick="copyMsg()">
+      🔗 Copy
+    </button>`;
 }
 
-function shareToFacebook(){
-  const d = window._shareData;
-  // Try native share first on mobile (better UX than browser popup)
-  if(navigator.share && DEVICE.isTouch){
-    navigator.share({title:'Med Crush', text:d.msg, url:GAME_URL}).catch(()=>{});
-    return;
-  }
-  // Desktop: open Facebook sharer — URL only (quote param deprecated)
-  window.open(d.fbURL, '_blank', 'width=600,height=500');
+function shareFB(){
+  const d=window._shareData;
+  window.open(d.fbURL,'_blank','width=626,height=436');
 }
-
-function shareToWhatsApp(){
-  const d = window._shareData;
-  // On mobile: open WhatsApp app directly
-  if(DEVICE.isTouch){
-    window.location.href = d.waURL;
-  } else {
-    window.open('https://web.whatsapp.com/send?text=' + encodeURIComponent(d.msg), '_blank');
-  }
+function shareWA(){
+  const d=window._shareData;
+  if(DEVICE&&DEVICE.isTouch) window.location.href=d.waURL;
+  else window.open('https://web.whatsapp.com/send?text='+encodeURIComponent(d.msg),'_blank');
 }
-
-function shareToInstagram(){
-  const d = window._shareData;
-  // Instagram has NO web share API — best approach:
-  // 1. Copy text to clipboard
-  // 2. Open Instagram app (deep link)
-  const copied = navigator.clipboard
-    ? navigator.clipboard.writeText(d.igMsg).then(()=>true).catch(()=>false)
-    : Promise.resolve(false);
-
-  copied.then(ok=>{
-    // Show a styled modal instead of ugly alert
-    showShareModal(
-      '📸 Share on Instagram',
-      (ok ? '✅ Caption copied to clipboard!' : 'Copy this caption:') + '\n\n' + d.igMsg,
-      [
-        {label:'Open Instagram', action:()=>{ window.location.href='instagram://'; setTimeout(()=>window.open('https://www.instagram.com','_blank'),1000); }},
-        {label:'Done', action:null}
-      ]
-    );
-  });
+function shareTW(){
+  window.open(window._shareData.twURL,'_blank','width=600,height=400');
 }
-
-function shareToTwitter(){
-  const d = window._shareData;
-  window.open(d.twURL, '_blank', 'width=600,height=400');
-}
-
-function copyLink(){
-  navigator.clipboard.writeText(window._shareData.msg + '\n' + GAME_URL)
-    .then(()=> showShareModal('🔗 Copied!', 'Message + link copied to clipboard. Paste anywhere!', [{label:'Done',action:null}]))
-    .catch(()=> showShareModal('🔗 Copy this', window._shareData.msg, [{label:'Done',action:null}]));
-}
-
 function nativeShare(){
-  const d = window._shareData;
-  if(navigator.share){
-    navigator.share({title:'Med Crush 💊', text:d.msg, url:GAME_URL}).catch(()=>{});
-  }
+  const d=window._shareData;
+  if(navigator.share) navigator.share({title:'Med Crush 💊',text:d.msg,url:GAME_URL}).catch(()=>copyMsg());
+  else copyMsg();
 }
-
-// Small inline modal for Instagram / copy flows (nicer than alert())
-function showShareModal(title, text, buttons){
-  document.getElementById('share-modal-overlay')?.remove();
-  const ov = document.createElement('div');
-  ov.id = 'share-modal-overlay';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;';
-  const box = document.createElement('div');
-  box.style.cssText='background:#12122a;border:1px solid #2a2a50;border-radius:18px;padding:22px 20px;max-width:340px;width:100%;text-align:center;';
-  const safeText = text.replace(/</g,'&lt;').replace(/
-/g,'<br>');
-  box.innerHTML=`
-    <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:10px;">${title}</div>
-    <div style="font-size:13px;color:#999;line-height:1.7;margin-bottom:16px;word-break:break-word;">${safeText}</div>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-      ${buttons.map((b,i)=>`<button onclick="(${i===0&&b.action?b.action.toString():'()=>{}'})()" style="background:${i===0?'linear-gradient(135deg,#c084fc,#818cf8)':'#1a1a2e'};color:${i===0?'#fff':'#aaa'};border:${i===0?'none':'1px solid #2a2a4a'};padding:10px 18px;border-radius:50px;font-size:13px;font-weight:700;cursor:pointer;" onclick2="document.getElementById('share-modal-overlay').remove()">${b.label}</button>`).join('')}
-    </div>`;
-  // Close on button click
-  box.querySelectorAll('button').forEach(btn=>{
-    btn.addEventListener('click',()=>setTimeout(()=>ov.remove(),100));
-  });
-  ov.appendChild(box);
-  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
-  document.body.appendChild(ov);
+function copyMsg(){
+  const txt=(window._shareData||{}).msg||GAME_URL;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(txt).then(()=>showToast('✅ Copied! Paste anywhere to challenge friends.')).catch(()=>fbCopy(txt));
+  } else fbCopy(txt);
 }
-
+function fbCopy(txt){
+  const ta=document.createElement('textarea');
+  ta.value=txt; ta.style.cssText='position:fixed;opacity:0;top:0;left:0;';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try{document.execCommand('copy');showToast('✅ Copied!');}catch(e){showToast('Copy: '+txt);}
+  ta.remove();
+}
+function showToast(msg){
+  document.getElementById('mc-toast')?.remove();
+  const t=document.createElement('div');
+  t.id='mc-toast';
+  t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#c084fc;color:#fff;padding:12px 24px;border-radius:50px;font-size:14px;font-weight:700;z-index:600;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.5);';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
 function openLink(u){window.open(u,'_blank');}
 
 /* ╔═══════════════════════════════════════════╗
@@ -1438,9 +1385,61 @@ function showBanner(text){
 }
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 
+/* ══════════════════════════════════════════
+   VIRALITY FEATURES
+══════════════════════════════════════════ */
+
+/* 1. REFERRAL BONUS — ?ref=NAME gives +200 pts to new player */
+function checkReferral(){
+  const params = new URLSearchParams(window.location.search);
+  const ref    = params.get('ref');
+  if(!ref) return;
+  // Only apply bonus if this device hasn't played before
+  const stats = getStats();
+  if(stats.totalGames > 0) return; // existing player, no bonus
+  referralBonus = 200;
+  // Show referral welcome on the welcome page
+  const refName = decodeURIComponent(ref).trim();
+  const banner = document.createElement('div');
+  banner.style.cssText = 'background:linear-gradient(135deg,#1a0a3a,#0a1a3a);border:1px solid #c084fc;border-radius:14px;padding:14px 16px;margin-bottom:16px;text-align:center;max-width:290px;';
+  banner.innerHTML = '<div style="font-size:13px;color:#c084fc;font-weight:700;margin-bottom:4px;">🎁 '+escHtml(refName)+' challenged you!</div>'
+    +'<div style="font-size:12px;color:#888;">You start with a <b style="color:#facc15;">+200 pt head start</b>. Beat their score!</div>';
+  const btns = document.querySelector('.wlc-btns');
+  if(btns) btns.parentNode.insertBefore(banner, btns);
+}
+
+/* 2. YESTERDAY'S CHAMPION — shown on welcome page */
+function showYesterdayChamp(){
+  const weekly = lbData.weekly||[];
+  if(!weekly.length) return;
+  // Yesterday top scorer from weekly data (best proxy without a separate yesterday endpoint)
+  const top = weekly[0];
+  if(!top) return;
+  // Only show if there's actual data
+  const el = document.getElementById('yesterday-champ');
+  if(el){
+    el.innerHTML = '🏆 <b>'+escHtml(top.name)+'</b> is currently leading with <b style="color:#facc15">'+Number(top.score).toLocaleString()+' pts</b> this week. Can you beat them?';
+    el.style.display='';
+  }
+}
+
+function escHtml(s){ const d=document.createElement('div');d.textContent=s;return d.innerHTML; }
+
+/* 3. SHARE WITH REFERRAL LINK — appends ?ref=NAME to GAME_URL */
+function buildReferralURL(name){
+  const base = GAME_URL.split('?')[0];
+  return base + '?ref=' + encodeURIComponent(name);
+}
+
 /* ── INIT ── */
+function joinWAGroup(){
+  // Replace this URL with your actual WhatsApp community/group invite link
+  window.open('https://chat.whatsapp.com/YOUR_GROUP_INVITE_CODE','_blank');
+}
+
 loadUser();
-fetchLB().catch(()=>{});
+fetchLB().then(()=>{ showYesterdayChamp(); }).catch(()=>{});
+checkReferral();
 showPage('page-welcome');
 </script>
 </body>
