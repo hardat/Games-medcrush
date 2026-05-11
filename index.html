@@ -81,7 +81,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
 #hud-moves-val.danger{color:#f87171;animation:pulse .6s ease infinite alternate;}
 @keyframes pulse{from{opacity:1}to{opacity:.4}}
 
-/* BOARD — original sizing preserved, responsive */
+/* BOARD — device-adaptive */
 #game-wrapper{position:relative;width:100%;max-width:480px;}
 #board{
   display:grid;
@@ -94,9 +94,10 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
   padding:6px;
   aspect-ratio:1;
   width:100%;
-  touch-action:none;
+  touch-action:none;     /* critical: stops browser handling touch as scroll */
   user-select:none;
   -webkit-user-select:none;
+  -webkit-touch-callout:none;  /* stops iOS press-hold menu on emoji */
 }
 .cell{
   border-radius:8px;
@@ -104,7 +105,14 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
   font-size:clamp(16px,4.5vw,26px);
   cursor:pointer;
   transition:transform .1s,box-shadow .12s;
-  position:relative;user-select:none;
+  position:relative;
+  user-select:none;
+  -webkit-user-select:none;
+  pointer-events:none; /* touch handled at board level via coordinates, not cell events */
+}
+/* Re-enable pointer for desktop click */
+@media(hover:hover) and (pointer:fine){
+  .cell{ pointer-events:auto; }
 }
 .cell:hover{transform:scale(1.08);z-index:2;}
 .cell.selected{box-shadow:0 0 0 2.5px #fff,0 0 14px 3px rgba(255,255,255,.38);transform:scale(1.12);z-index:3;}
@@ -661,12 +669,21 @@ function render(){
 
 function onCellClick(r,c){
   if(animating||gameEnded) return;
+  if(r<0||r>=GRID||c<0||c>=GRID) return;
   if(!selected){ selected=[r,c]; render(); return; }
   const[sr,sc]=selected;
   if(sr===r&&sc===c){ selected=null; render(); return; }
   if(Math.abs(sr-r)+Math.abs(sc-c)===1){ selected=null; trySwap(sr,sc,r,c); }
   else{ selected=[r,c]; render(); }
 }
+
+/* Desktop click — uses board-level coordinate detection (same as touch) */
+document.getElementById('board').addEventListener('click', function(e){
+  if(animating||gameEnded) return;
+  if(DEVICE.isTouch) return; // touch devices handled by touch events
+  const pos = cellFromPoint(e.clientX, e.clientY);
+  if(pos) onCellClick(pos[0], pos[1]);
+});
 
 /* ── trySwap: exactly as v1 ── */
 function trySwap(r1,c1,r2,c2){
@@ -792,36 +809,129 @@ function showMsg(text){
   setTimeout(()=>el.classList.remove('show'),1200);
 }
 
-/* ── TOUCH SWIPE (mobile) ── */
-(function(){
-  let tR=-1,tC=-1,tX=0,tY=0;
-  document.getElementById('board').addEventListener('touchstart',e=>{
-    if(animating||gameEnded)return;
-    const t=e.touches[0];
-    const cell=t.target.closest('.cell');
-    if(!cell)return;
-    e.preventDefault();
-    tR=+cell.dataset.r; tC=+cell.dataset.c; tX=t.clientX; tY=t.clientY;
-    selected=[tR,tC]; render();
-  },{passive:false});
+/* ══════════════════════════════════════════════════════════
+   DEVICE DETECTION & ADAPTIVE INPUT
+   Detects phone / tablet / desktop and adjusts accordingly.
+   Mobile: swipe to swap + tap to select
+   Desktop: click to select + click adjacent to swap
+══════════════════════════════════════════════════════════ */
+const DEVICE = (function(){
+  const ua   = navigator.userAgent||'';
+  const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const isPhone  = isTouch && Math.min(screen.width,screen.height) < 768;
+  const isTablet = isTouch && !isPhone;
+  const isDesktop= !isTouch;
+  // Log so user can verify in console
+  console.log('MedCrush device:', isPhone?'📱 Phone': isTablet?'📟 Tablet':'🖥 Desktop',
+    '| screen:', screen.width+'×'+screen.height,
+    '| touch:', isTouch);
+  return {isPhone, isTablet, isDesktop, isTouch};
+})();
 
-  document.getElementById('board').addEventListener('touchend',e=>{
-    if(tR<0||animating||gameEnded)return;
-    const t=e.changedTouches[0];
-    const dx=t.clientX-tX, dy=t.clientY-tY;
-    const ax=Math.abs(dx), ay=Math.abs(dy);
-    if(Math.max(ax,ay)>16){
-      let r2=tR,c2=tC;
-      if(ax>ay) c2=dx>0?tC+1:tC-1;
-      else       r2=dy>0?tR+1:tR-1;
-      const sr=tR,sc=tC; selected=null;
-      if(r2>=0&&r2<GRID&&c2>=0&&c2<GRID) trySwap(sr,sc,r2,c2);
+// Swipe threshold: smaller cells on phone need lower threshold
+// Phone: ~5% of board width | Tablet: ~4% | Desktop: not used
+function getSwipeThreshold(){
+  const board = document.getElementById('board');
+  const cellSize = board ? board.offsetWidth / GRID : 50;
+  return Math.max(8, cellSize * 0.25); // 25% of one cell width
+}
+
+// Get board cell [row,col] from a pixel coordinate
+function cellFromPoint(x, y){
+  const board = document.getElementById('board');
+  if(!board) return null;
+  const rect = board.getBoundingClientRect();
+  const cellW = rect.width  / GRID;
+  const cellH = rect.height / GRID;
+  const c = Math.floor((x - rect.left)  / cellW);
+  const r = Math.floor((y - rect.top) / cellH);
+  if(r>=0 && r<GRID && c>=0 && c<GRID) return [r,c];
+  return null;
+}
+
+(function(){
+  const board = document.getElementById('board');
+  let tR=-1, tC=-1, tX=0, tY=0, tMoveX=0, tMoveY=0, didSwipe=false;
+
+  // ── TOUCH START ───────────────────────────────────────────
+  board.addEventListener('touchstart', function(e){
+    if(animating || gameEnded) return;
+    e.preventDefault(); // prevent scroll / zoom on the board
+
+    const t = e.touches[0];
+    // Derive cell from coordinate — doesn't depend on target element
+    // This fixes the issue where touch lands on emoji text node
+    const pos = cellFromPoint(t.clientX, t.clientY);
+    if(!pos) return;
+
+    [tR, tC] = pos;
+    tX = t.clientX; tY = t.clientY;
+    tMoveX = t.clientX; tMoveY = t.clientY;
+    didSwipe = false;
+    selected = [tR, tC];
+    render();
+  }, {passive: false});
+
+  // ── TOUCH MOVE — track for swipe direction ────────────────
+  board.addEventListener('touchmove', function(e){
+    if(tR < 0 || animating || gameEnded) return;
+    e.preventDefault(); // prevent page scroll while swiping board
+    const t = e.touches[0];
+    tMoveX = t.clientX;
+    tMoveY = t.clientY;
+
+    // Trigger swap mid-move if threshold exceeded — feels instant
+    const dx = tMoveX - tX, dy = tMoveY - tY;
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    const threshold = getSwipeThreshold();
+
+    if(!didSwipe && Math.max(ax, ay) > threshold){
+      didSwipe = true;
+      let r2=tR, c2=tC;
+      if(ax > ay) c2 = dx > 0 ? tC+1 : tC-1;
+      else         r2 = dy > 0 ? tR+1 : tR-1;
+      const sr=tR, sc=tC;
+      tR = -1; // reset so touchend doesn't fire again
+      selected = null;
+      if(r2>=0 && r2<GRID && c2>=0 && c2<GRID) trySwap(sr, sc, r2, c2);
+      else render();
+    }
+  }, {passive: false});
+
+  // ── TOUCH END ─────────────────────────────────────────────
+  board.addEventListener('touchend', function(e){
+    if(animating || gameEnded){ tR=-1; return; }
+    if(didSwipe || tR<0){ tR=-1; didSwipe=false; return; } // already handled
+
+    const t = e.changedTouches[0];
+    const dx = t.clientX - tX, dy = t.clientY - tY;
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    const threshold = getSwipeThreshold();
+
+    if(Math.max(ax, ay) > threshold){
+      // Short swipe not caught in touchmove (slow swipe)
+      let r2=tR, c2=tC;
+      if(ax > ay) c2 = dx > 0 ? tC+1 : tC-1;
+      else         r2 = dy > 0 ? tR+1 : tR-1;
+      const sr=tR, sc=tC;
+      tR=-1; selected=null;
+      if(r2>=0 && r2<GRID && c2>=0 && c2<GRID) trySwap(sr, sc, r2, c2);
       else render();
     } else {
-      onCellClick(tR,tC);
+      // Tap — treat as cell click
+      const savedR=tR, savedC=tC;
+      tR=-1;
+      onCellClick(savedR, savedC);
     }
-    tR=-1;
-  },{passive:true});
+    didSwipe=false;
+  }, {passive: true});
+
+  // ── TOUCH CANCEL (call dropped, notification, etc.) ───────
+  board.addEventListener('touchcancel', function(){
+    tR=-1; didSwipe=false;
+    selected=null; render();
+  }, {passive: true});
+
 })();
 
 /* ╔═══════════════════════════════════════════╗
