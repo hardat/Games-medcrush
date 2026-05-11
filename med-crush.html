@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Med Crush</title>
+<style>
+/* ─── RESET ─────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;}
+
+/* ─── PAGES ─────────────────────────────── */
+.page{display:none;width:100%;flex-direction:column;align-items:center;}
+.page.active{display:flex;}
+
+/* ══════════════════════════════════════════
+   WELCOME PAGE
+══════════════════════════════════════════ */
+#page-welcome{
+  min-height:100vh;justify-content:center;padding:30px 20px;
+  background:radial-gradient(ellipse at 50% 10%,#1a0a3a 0%,#0a0a1a 65%);
+}
+.wlc-icons{font-size:32px;letter-spacing:8px;margin-bottom:20px;opacity:.8;}
+.wlc-logo{font-size:clamp(32px,9vw,56px);font-weight:900;letter-spacing:3px;
+  background:linear-gradient(135deg,#00d4ff,#ff6b9d,#c084fc);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:4px;}
+.wlc-sub{font-size:12px;color:#555;letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;}
+.wlc-tagline{font-size:13px;color:#444;margin-bottom:34px;text-align:center;}
+.wlc-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:290px;margin-bottom:28px;}
+.wb{width:100%;padding:15px;border-radius:50px;font-size:15px;font-weight:800;border:none;cursor:pointer;letter-spacing:.5px;transition:all .18s;}
+.wb-primary{background:linear-gradient(135deg,#c084fc,#818cf8);color:#fff;box-shadow:0 6px 28px rgba(192,132,252,.35);}
+.wb-primary:active{transform:scale(.97);}
+.wb-outline{background:transparent;border:2px solid #2a2a4a;color:#888;}
+.wb-outline:active{transform:scale(.97);}
+.wb-text{background:none;border:none;color:#555;font-size:13px;cursor:pointer;text-decoration:underline;padding:4px;}
+.wlc-users{display:flex;gap:12px;margin-top:4px;}
+.wlc-user-badge{background:#111128;border:1px solid #1e1e3a;border-radius:10px;padding:8px 14px;font-size:12px;color:#666;text-align:center;}
+.wlc-user-badge span{display:block;font-size:18px;margin-bottom:2px;}
+
+/* ══════════════════════════════════════════
+   HOW TO PLAY PAGE
+══════════════════════════════════════════ */
+#page-rules{padding:0;align-items:stretch;}
+.rules-header{background:#111128;border-bottom:1px solid #1e1e3a;padding:14px 18px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;}
+.rules-header h2{font-size:17px;font-weight:800;flex:1;}
+.back-btn{background:none;border:none;color:#c084fc;font-size:20px;cursor:pointer;padding:4px 8px;font-weight:700;}
+.rules-body{padding:18px;max-width:520px;margin:0 auto;width:100%;}
+.rs{margin-bottom:22px;}
+.rs h3{font-size:14px;font-weight:800;color:#c084fc;margin-bottom:8px;display:flex;align-items:center;gap:7px;}
+.rs p,.rs li{font-size:13px;color:#999;line-height:1.85;}
+.rs ul{padding-left:16px;}
+.rs li{margin-bottom:3px;}
+.rt{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px;}
+.rt th{color:#666;font-weight:700;font-size:11px;letter-spacing:.8px;padding:7px 10px;text-align:left;border-bottom:1px solid #1a1a30;}
+.rt td{color:#bbb;padding:7px 10px;border-bottom:1px solid #111128;}
+.badge-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.badge-card{background:#0d0d20;border:1px solid #1a1a30;border-radius:10px;padding:9px 11px;font-size:12px;color:#999;}
+.badge-card b{color:#c084fc;display:block;margin-bottom:2px;font-size:13px;}
+.rules-play-btn{width:100%;padding:14px;border-radius:50px;background:linear-gradient(135deg,#c084fc,#818cf8);color:#fff;font-size:15px;font-weight:800;border:none;cursor:pointer;margin-bottom:30px;}
+
+/* ══════════════════════════════════════════
+   GAME PAGE
+══════════════════════════════════════════ */
+#page-game{padding:12px 8px 0;}
+.g-topbar{display:flex;align-items:center;width:100%;max-width:480px;margin-bottom:8px;gap:8px;}
+.g-title{font-size:16px;font-weight:900;letter-spacing:1px;
+  background:linear-gradient(135deg,#00d4ff,#ff6b9d);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  flex:1;}
+.g-tbtn{background:none;border:1px solid #2a2a4a;color:#777;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.g-tbtn:active{background:#1a1a2e;}
+
+/* HUD */
+.hud{display:flex;gap:8px;margin-bottom:10px;width:100%;max-width:480px;}
+.hud-card{flex:1;background:#1a1a2e;border:1px solid #2a2a4a;border-radius:10px;padding:8px 6px;text-align:center;}
+.hud-label{font-size:9px;color:#666;letter-spacing:1px;text-transform:uppercase;}
+.hud-value{font-size:clamp(14px,3.8vw,22px);font-weight:700;color:#fff;}
+#hud-moves-val.ok{color:#4ade80;}
+#hud-moves-val.warn{color:#facc15;}
+#hud-moves-val.danger{color:#f87171;animation:pulse .6s ease infinite alternate;}
+@keyframes pulse{from{opacity:1}to{opacity:.4}}
+
+/* BOARD — original sizing preserved, responsive */
+#game-wrapper{position:relative;width:100%;max-width:480px;}
+#board{
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+  grid-template-rows:repeat(8,1fr);
+  gap:2px;
+  background:#111128;
+  border:2px solid #2a2a4a;
+  border-radius:16px;
+  padding:6px;
+  aspect-ratio:1;
+  width:100%;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.cell{
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(16px,4.5vw,26px);
+  cursor:pointer;
+  transition:transform .1s,box-shadow .12s;
+  position:relative;user-select:none;
+}
+.cell:hover{transform:scale(1.08);z-index:2;}
+.cell.selected{box-shadow:0 0 0 2.5px #fff,0 0 14px 3px rgba(255,255,255,.38);transform:scale(1.12);z-index:3;}
+.cell.matched{animation:pop .35s ease forwards;}
+.cell.fall{animation:fall .25s ease;}
+@keyframes pop{0%{transform:scale(1.2);opacity:1}100%{transform:scale(0);opacity:0}}
+@keyframes fall{0%{transform:translateY(-100%);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.cell.shake{animation:shake .3s ease;}
+
+/* Flash message */
+.msg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:clamp(20px,5vw,30px);font-weight:800;color:#fff;text-shadow:0 0 20px rgba(0,200,255,.8);pointer-events:none;opacity:0;z-index:10;white-space:nowrap;padding:6px 14px;border-radius:10px;}
+.msg.show{opacity:1;animation:msgPop 1.2s ease forwards;}
+@keyframes msgPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+
+/* Moves bar */
+#moves-bar{display:flex;gap:3px;margin-top:8px;width:100%;max-width:480px;flex-wrap:wrap;}
+.move-dot{width:clamp(9px,2.3vw,13px);height:clamp(9px,2.3vw,13px);border-radius:50%;background:#2a2a4a;transition:background .25s;}
+.move-dot.used{background:#ff6b9d;}
+.move-dot.last3{background:#f87171;animation:pulse .5s ease infinite alternate;}
+
+/* Bottom buttons */
+.game-btns{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;justify-content:center;}
+.btn{border:none;border-radius:50px;font-size:14px;font-weight:700;cursor:pointer;padding:10px 22px;transition:all .15s;}
+.btn-p{background:linear-gradient(135deg,#c084fc,#818cf8);color:#fff;}
+.btn-p:active{transform:scale(.97);}
+.btn-s{background:#1a1a2e;border:1px solid #2a2a4a;color:#999;}
+.btn-s:active{transform:scale(.97);}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;justify-content:center;max-width:480px;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:#555;}
+.legend-item span{font-size:14px;}
+
+/* ══════════════════════════════════════════
+   OVERLAYS (modals)
+══════════════════════════════════════════ */
+.ov{display:none;position:fixed;inset:0;background:rgba(4,4,18,.93);z-index:200;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;}
+.ov.open{display:flex;}
+.ovc{background:#11112a;border:1px solid #2a2a50;border-radius:20px;padding:22px 20px;width:100%;max-width:400px;text-align:center;margin:auto;}
+.ovc h2{font-size:20px;font-weight:800;margin-bottom:6px;}
+.inp{width:100%;background:#080820;border:1.5px solid #2a2a4a;color:#fff;padding:12px 14px;border-radius:10px;font-size:15px;margin-bottom:10px;outline:none;transition:border-color .2s;}
+.inp:focus{border-color:#c084fc;}
+.inp::placeholder{color:#2a2a3a;}
+.flabel{display:block;text-align:left;font-size:12px;color:#888;margin-bottom:5px;font-weight:700;}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;background:#080820;border-radius:12px;padding:4px;margin-bottom:12px;}
+.tab{flex:1;padding:8px 4px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;color:#444;border:none;background:transparent;transition:all .15s;}
+.tab.active{background:#1a1a40;color:#c084fc;}
+
+/* Leaderboard rows */
+.lb-list{max-height:290px;overflow-y:auto;border-radius:10px;background:#080820;border:1px solid #1a1a30;}
+.lbr{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #0e0e26;font-size:13px;}
+.lbr:last-child{border-bottom:none;}
+.lbr.you{background:#160a2a;}
+.lbrank{min-width:30px;font-weight:800;font-size:13px;color:#444;}
+.lbrank.g{color:#facc15;}.lbrank.s{color:#94a3b8;}.lbrank.b{color:#fb923c;}
+.lbname{flex:1;font-weight:600;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lbsc{font-weight:800;color:#c084fc;min-width:54px;text-align:right;}
+
+/* Misc */
+.divider{width:100%;height:1px;background:#1a1a30;margin:12px 0;}
+.tmuted{color:#555;font-size:13px;line-height:1.5;}
+.pill{display:inline-block;padding:3px 10px;border-radius:50px;font-size:11px;font-weight:700;}
+.pg{background:#14532d;color:#4ade80;}.py{background:#422006;color:#facc15;}
+.pp{background:#2e1065;color:#c084fc;}.pr{background:#450a0a;color:#f87171;}.pc{background:#0c2a3a;color:#00d4ff;}
+
+/* Perf card */
+.pcrd{background:#0d0d22;border:1px solid #1e1e3a;border-radius:12px;padding:12px;margin-bottom:10px;}
+.pscore{font-size:30px;font-weight:800;color:#c084fc;margin:4px 0 10px;}
+.prow{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid #141430;}
+.prow:last-child{border-bottom:none;}
+.plabel{color:#555;}.pval{font-weight:700;color:#fff;}
+
+/* Insights */
+.insights{background:#0d0d22;border:1px solid #1a2a1a;border-radius:10px;padding:11px 13px;margin-bottom:12px;text-align:left;font-size:13px;line-height:1.8;color:#999;}
+
+/* Share */
+.share-wrap{margin-top:10px;}
+.share-label{font-size:12px;color:#555;margin-bottom:8px;}
+.share-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.sbtn{display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:50px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:transform .12s;white-space:nowrap;}
+.sbtn:active{transform:scale(.96);}
+.sfb{background:#1877f2;color:#fff;}.swa{background:#25d366;color:#fff;}
+.sig{background:linear-gradient(135deg,#833ab4,#e1306c,#fcb045);color:#fff;}
+
+/* Welcome-back box */
+.wbox{background:#091a09;border:1px solid #1a3a1a;border-radius:10px;padding:10px 13px;margin-bottom:10px;text-align:left;font-size:14px;color:#4ade80;}
+.errbox{color:#f87171;font-size:13px;margin-bottom:10px;display:none;text-align:left;padding:8px 10px;background:#1a0808;border-radius:8px;}
+
+/* Congrats banner */
+.cbanner{position:fixed;top:0;left:0;right:0;padding:13px 16px;background:linear-gradient(135deg,#facc15,#fb923c);color:#1a0a00;font-weight:800;font-size:14px;text-align:center;z-index:400;animation:slideDown .3s ease;border-radius:0 0 12px 12px;}
+@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     PAGE 1 — WELCOME
+══════════════════════════════════════ -->
+<div id="page-welcome" class="page active">
+  <div class="wlc-icons">💊 💉 🩺 🧬 🩹 🧪</div>
+  <div class="wlc-logo">MED CRUSH</div>
+  <div class="wlc-sub">Match Medicine · Heal the World</div>
+  <div class="wlc-tagline">For Patients · Doctors · Everyone</div>
+
+  <div class="wlc-btns">
+    <button class="wb wb-primary" onclick="gotoGame()">▶&nbsp; Play Now</button>
+    <button class="wb wb-outline" onclick="gotoLogin()">🏅&nbsp; Login &amp; Save Scores</button>
+    <button class="wb-text" onclick="gotoRules()">📖 How to Play &amp; Rules</button>
+  </div>
+
+  <div class="wlc-users">
+    <div class="wlc-user-badge"><span>🧑‍⚕️</span>Doctors</div>
+    <div class="wlc-user-badge"><span>🏥</span>Patients</div>
+    <div class="wlc-user-badge"><span>👨‍👩‍👧</span>Everyone</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     PAGE 2 — HOW TO PLAY / RULES
+══════════════════════════════════════ -->
+<div id="page-rules" class="page">
+  <div class="rules-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <h2>📖 How to Play Med Crush</h2>
+  </div>
+  <div class="rules-body">
+
+    <div class="rs">
+      <h3>🎯 Objective</h3>
+      <p>Match 3 or more identical medicines in a row or column to clear them and score points. Use your 20 moves wisely — the higher you score before moves run out, the better your global ranking!</p>
+    </div>
+
+    <div class="rs">
+      <h3>🎮 How to Play</h3>
+      <ul>
+        <li><b>Click / Tap</b> any medicine tile to select it (it glows white)</li>
+        <li><b>Click / Tap an adjacent tile</b> (up, down, left, right) to swap them</li>
+        <li>On mobile, <b>swipe</b> directly on a tile in any direction to swap</li>
+        <li>If the swap creates 3+ matching medicines → they <b>pop and clear</b></li>
+        <li>New medicines <b>fall from the top</b> to fill the gaps</li>
+        <li>Chain reactions happen automatically — one clear can trigger another!</li>
+        <li>Invalid swaps (no match) are <b>reversed with a shake</b></li>
+        <li>The board <b>auto-shuffles</b> if no valid moves exist</li>
+      </ul>
+    </div>
+
+    <div class="rs">
+      <h3>💊 The Medicines</h3>
+      <table class="rt">
+        <tr><th>Icon</th><th>Name</th><th>Colour</th></tr>
+        <tr><td>💊</td><td>Pill</td><td style="color:#ff6b9d">Hot Pink</td></tr>
+        <tr><td>💉</td><td>Syringe</td><td style="color:#00d4ff">Cyan</td></tr>
+        <tr><td>🩺</td><td>Stethoscope</td><td style="color:#c084fc">Purple</td></tr>
+        <tr><td>🧬</td><td>Vaccine / DNA</td><td style="color:#4ade80">Green</td></tr>
+        <tr><td>🩹</td><td>Bandage</td><td style="color:#fb923c">Orange</td></tr>
+        <tr><td>🧪</td><td>Test Tube</td><td style="color:#facc15">Yellow</td></tr>
+      </table>
+    </div>
+
+    <div class="rs">
+      <h3>⭐ Scoring</h3>
+      <table class="rt">
+        <tr><th>Match</th><th>Base Points</th><th>Multiplied by</th></tr>
+        <tr><td>3 in a row</td><td>150 pts</td><td>Current level</td></tr>
+        <tr><td>4 in a row</td><td>200 pts</td><td>Current level</td></tr>
+        <tr><td>5+ in a row</td><td>250+ pts</td><td>Current level</td></tr>
+        <tr><td>Chain reaction</td><td>Same formula</td><td>Cascades are free!</td></tr>
+      </table>
+    </div>
+
+    <div class="rs">
+      <h3>📈 Levels</h3>
+      <table class="rt">
+        <tr><th>Level</th><th>Score Goal</th><th>Multiplier</th></tr>
+        <tr><td>1</td><td>500 pts</td><td>×1</td></tr>
+        <tr><td>2</td><td>1,200 pts</td><td>×2</td></tr>
+        <tr><td>3</td><td>2,500 pts</td><td>×3</td></tr>
+        <tr><td>4</td><td>4,500 pts</td><td>×4</td></tr>
+        <tr><td>5 (Max)</td><td>7,000 pts</td><td>×5</td></tr>
+      </table>
+    </div>
+
+    <div class="rs">
+      <h3>🏅 Leaderboard</h3>
+      <ul>
+        <li>Save your score after each game with your <b>name + phone number</b></li>
+        <li>Phone number is your unique identity — name saved on device</li>
+        <li>Leaderboard has <b>Today · This Week · This Month</b> tabs</li>
+        <li>Only your <b>best score</b> per period counts</li>
+      </ul>
+    </div>
+
+    <div class="rs">
+      <h3>🎖 Performance Badges</h3>
+      <div class="badge-grid">
+        <div class="badge-card"><b>👑 #1 Champion</b>Top of the world</div>
+        <div class="badge-card"><b>🥈 Top 3</b>Elite healer</div>
+        <div class="badge-card"><b>🏅 Top 10</b>Master prescriber</div>
+        <div class="badge-card"><b>⭐ Top 50</b>Expert clinician</div>
+        <div class="badge-card"><b>✨ Top 100</b>Rising doctor</div>
+        <div class="badge-card"><b>🔥 Top 1%</b>Rare talent</div>
+        <div class="badge-card"><b>💪 Top 10%</b>Above the pack</div>
+        <div class="badge-card"><b>🌱 Pioneer</b>Just starting out</div>
+      </div>
+    </div>
+
+    <div class="rs">
+      <h3>💡 Pro Tips</h3>
+      <ul>
+        <li>Look for <b>L-shapes &amp; T-shapes</b> — they clear more tiles</li>
+        <li>Plan moves that <b>set up chain reactions</b> for multiplied points</li>
+        <li>Reach higher <b>levels</b> for bigger score multipliers</li>
+        <li>Play daily to build a <b>streak</b> and track your improvement</li>
+        <li>Share your score to <b>challenge friends</b> on WhatsApp / Facebook</li>
+      </ul>
+    </div>
+
+    <button class="rules-play-btn" onclick="gotoGame()">▶ Start Playing!</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     PAGE 3 — GAME
+══════════════════════════════════════ -->
+<div id="page-game" class="page">
+  <div class="g-topbar">
+    <span class="g-title">💊 MED CRUSH</span>
+    <button class="g-tbtn" onclick="openLB()">🏆 Board</button>
+    <button class="g-tbtn" onclick="gotoRules()">📖 Rules</button>
+    <button class="g-tbtn" onclick="showPage('page-welcome')">⌂</button>
+  </div>
+
+  <div class="hud">
+    <div class="hud-card"><div class="hud-label">Score</div><div class="hud-value" id="score">0</div></div>
+    <div class="hud-card"><div class="hud-label">Level</div><div class="hud-value" id="level">1</div></div>
+    <div class="hud-card"><div class="hud-label">Goal</div><div class="hud-value" id="goal" style="font-size:clamp(11px,2.8vw,18px);">0/500</div></div>
+    <div class="hud-card"><div class="hud-label">Moves Left</div><div class="hud-value ok" id="hud-moves-val">20</div></div>
+  </div>
+
+  <div id="game-wrapper">
+    <div id="board"></div>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div id="moves-bar"></div>
+
+  <div class="game-btns">
+    <button class="btn btn-p" onclick="startGame()">⚕ New Game</button>
+    <button class="btn btn-s" onclick="openLB()">🏆 Leaderboard</button>
+  </div>
+  <div class="legend" id="legend"></div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     OVERLAY: LOGIN
+══════════════════════════════════════ -->
+<div class="ov" id="ov-login">
+<div class="ovc">
+  <div style="font-size:32px;margin-bottom:6px">🏅</div>
+  <h2>Login to Med Crush</h2>
+  <p class="tmuted" style="margin-bottom:14px">Save scores &amp; join the global leaderboard</p>
+
+  <div id="lf-new">
+    <label class="flabel">👤 Your Name</label>
+    <input class="inp" id="li-name" type="text" placeholder="Dr. Sharma / Priya / Rahul…" maxlength="40" autocomplete="name">
+    <label class="flabel">📱 Mobile Number</label>
+    <input class="inp" id="li-phone-new" type="tel" placeholder="+91 98765 43210" maxlength="15" autocomplete="tel">
+    <p style="font-size:11px;color:#333;text-align:left;margin-bottom:10px">Your name is saved on this device. Next time, just enter your number.</p>
+  </div>
+
+  <div id="lf-ret" style="display:none">
+    <div class="wbox" id="li-wb"></div>
+    <label class="flabel">📱 Confirm Mobile Number</label>
+    <input class="inp" id="li-phone-ret" type="tel" placeholder="+91 98765 43210" maxlength="15" autocomplete="tel">
+    <p style="font-size:11px;color:#333;text-align:left;margin-bottom:10px">
+      Not you? <span style="color:#c084fc;cursor:pointer;text-decoration:underline" onclick="loginAsNew()">Sign in as new user</span>
+    </p>
+  </div>
+
+  <div class="errbox" id="li-err"></div>
+  <button class="btn btn-p" style="width:100%;margin-bottom:10px" id="li-btn" onclick="submitLogin()">✅ Login &amp; Play</button>
+  <button class="btn btn-s" style="width:100%;font-size:13px" onclick="closeOv('ov-login');gotoGame()">Skip — Play as Guest</button>
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     OVERLAY: GAME OVER
+══════════════════════════════════════ -->
+<div class="ov" id="ov-gameover">
+<div class="ovc">
+  <div id="go-emoji" style="font-size:38px;margin-bottom:4px">⏱</div>
+  <h2 id="go-title">Game Over!</h2>
+  <p class="tmuted" id="go-sub" style="margin-bottom:12px">You used all 20 moves</p>
+
+  <div class="pcrd">
+    <div style="font-size:10px;color:#555;letter-spacing:1px;text-transform:uppercase">Your Score</div>
+    <div class="pscore" id="go-score-big">0</div>
+    <div class="prow"><span class="plabel">This Game</span><span class="pval" id="go-this">0</span></div>
+    <div class="prow" id="go-pb-row"><span class="plabel">Personal Best</span><span class="pval" id="go-pb">—</span></div>
+    <div class="prow"><span class="plabel">Level Reached</span><span class="pval" id="go-lv">1</span></div>
+    <div class="prow"><span class="plabel">Rank Badge</span><span class="pval" id="go-badge">—</span></div>
+    <div class="prow" id="go-streak-row" style="display:none"><span class="plabel">Play Streak</span><span class="pval" id="go-streak">—</span></div>
+  </div>
+
+  <div class="insights" id="go-insights"></div>
+
+  <button class="btn btn-p" style="width:100%;margin-bottom:10px;font-size:15px" onclick="openSave()">
+    💾 Save Score &amp; See Ranking
+  </button>
+  <button class="btn btn-s" style="width:100%;margin-bottom:10px" onclick="closeOv('ov-gameover');startGame()">
+    ↩ Play Again
+  </button>
+
+  <div class="divider"></div>
+  <div class="share-wrap">
+    <div class="share-label">🏥 Challenge friends &amp; family to beat your score!</div>
+    <div class="share-btns" id="go-share"></div>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     OVERLAY: SAVE SCORE
+══════════════════════════════════════ -->
+<div class="ov" id="ov-save">
+<div class="ovc">
+  <div style="font-size:32px;margin-bottom:6px">💾</div>
+  <h2>Save Your Score</h2>
+  <p class="tmuted" style="margin-bottom:14px">Join the global Med Crush leaderboard</p>
+
+  <div id="sf-new">
+    <label class="flabel">👤 Your Name</label>
+    <input class="inp" id="si-name" type="text" placeholder="Dr. Sharma / Priya / Rahul…" maxlength="40" autocomplete="name">
+    <label class="flabel">📱 Mobile Number</label>
+    <input class="inp" id="si-phone-new" type="tel" placeholder="+91 98765 43210" maxlength="15" autocomplete="tel">
+    <p style="font-size:11px;color:#333;text-align:left;margin-bottom:10px">Name saved on this device. Next time, just your number.</p>
+  </div>
+
+  <div id="sf-ret" style="display:none">
+    <div class="wbox" id="si-wb"></div>
+    <label class="flabel">📱 Confirm Mobile Number</label>
+    <input class="inp" id="si-phone-ret" type="tel" placeholder="+91 98765 43210" maxlength="15" autocomplete="tel">
+    <p style="font-size:11px;color:#333;text-align:left;margin-bottom:10px">
+      Not you? <span style="color:#c084fc;cursor:pointer;text-decoration:underline" onclick="saveAsNew()">Use different name</span>
+    </p>
+  </div>
+
+  <div class="errbox" id="si-err"></div>
+  <button class="btn btn-p" style="width:100%;margin-bottom:10px" id="si-btn" onclick="doSave()">🚀 Submit Score</button>
+  <button class="btn btn-s" style="width:100%;font-size:13px" onclick="closeOv('ov-save');openOv('ov-gameover')">← Back</button>
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     OVERLAY: LEADERBOARD
+══════════════════════════════════════ -->
+<div class="ov" id="ov-lb">
+<div class="ovc" style="max-height:95vh;overflow-y:auto">
+  <h2>🏆 Global Leaderboard</h2>
+  <div id="lb-rank-line" class="tmuted" style="margin-bottom:10px;font-size:13px">—</div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('daily',this)">Today</button>
+    <button class="tab" onclick="switchTab('weekly',this)">This Week</button>
+    <button class="tab" onclick="switchTab('monthly',this)">This Month</button>
+  </div>
+  <div class="lb-list" id="lb-list"></div>
+  <div class="divider"></div>
+  <button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="closeOv('ov-lb');startGame()">⚕ Play Again</button>
+  <button class="btn btn-s" style="width:100%" onclick="closeOv('ov-lb')">Close</button>
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     OVERLAY: RANK CELEBRATION
+══════════════════════════════════════ -->
+<div class="ov" id="ov-rank">
+<div class="ovc">
+  <div id="rk-emoji" style="font-size:50px;margin-bottom:6px">🎉</div>
+  <h2 id="rk-title">Score Saved!</h2>
+  <div id="rk-body" style="color:#999;font-size:14px;line-height:1.7;margin:10px 0 14px"></div>
+  <div class="share-wrap">
+    <div class="share-label">Challenge your friends!</div>
+    <div class="share-btns" id="rk-share"></div>
+  </div>
+  <div class="divider"></div>
+  <button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="closeOv('ov-rank');openLB()">🏆 View Leaderboard</button>
+  <button class="btn btn-s" style="width:100%" onclick="closeOv('ov-rank');startGame()">⚕ Play Again</button>
+</div>
+</div>
+
+
+<script>
+/* ╔═══════════════════════════════════════════╗
+   ║  CONFIG — replace with your deployed URL  ║
+   ╚═══════════════════════════════════════════╝
+   Google Sheet columns (in this exact order):
+     A: Name | B: Phone | C: Timestamp | D: Score | E: Date
+*/
+const SHEET_URL = 'https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID/exec';
+const GAME_URL  = window.location.href;
+
+/* ╔═══════════════════════════════════════════╗
+   ║  MEDICINES — same as original v1          ║
+   ╚═══════════════════════════════════════════╝ */
+const MEDS = [
+  { emoji:'💊', name:'Pill',         color:'#ff6b9d', bg:'#2a1020' },
+  { emoji:'💉', name:'Syringe',      color:'#00d4ff', bg:'#001a2a' },
+  { emoji:'🩺', name:'Stethoscope',  color:'#c084fc', bg:'#1a0a2a' },
+  { emoji:'🧬', name:'Vaccine/DNA',  color:'#4ade80', bg:'#0a2010' },
+  { emoji:'🩹', name:'Bandage',      color:'#fb923c', bg:'#2a1000' },
+  { emoji:'🧪', name:'Test Tube',    color:'#facc15', bg:'#2a2000' },
+];
+const TYPES       = [0,1,2,3,4,5];
+const GRID        = 8;
+const MAX_MOVES   = 20;
+const LEVEL_GOALS = [500,1200,2500,4500,7000];
+
+/* ╔═══════════════════════════════════════════╗
+   ║  GAME STATE — identical to original v1    ║
+   ╚═══════════════════════════════════════════╝ */
+let board=[], selected=null, score=0, moves=0, level=0, animating=false;
+let gameEnded=false;   // extra guard so gameOver fires only once
+let lastScore=0;
+
+/* ╔═══════════════════════════════════════════╗
+   ║  LOCAL STORAGE                            ║
+   ╚═══════════════════════════════════════════╝ */
+const ls={
+  get:k=>{try{return JSON.parse(localStorage.getItem(k));}catch{return null;}},
+  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+};
+let me=null; // {name,phone}
+function loadUser(){ me=ls.get('mc_user'); }
+function saveUserLocal(n,p){ me={name:n,phone:p}; ls.set('mc_user',{name:n,phone:p}); }
+function getStats(){ return ls.get('mc_stats')||{best:0,totalGames:0,totalScore:0,streak:0,lastPlayDate:null}; }
+function saveStats(s){ ls.set('mc_stats',s); }
+
+function recordGame(sc){
+  const s=getStats(), prev=s.best, isNew=sc>prev;
+  if(isNew) s.best=sc;
+  s.totalGames=(s.totalGames||0)+1;
+  s.totalScore=(s.totalScore||0)+sc;
+  const today=new Date().toDateString(), yest=new Date(Date.now()-86400000).toDateString();
+  if(s.lastPlayDate===today){}
+  else if(s.lastPlayDate===yest) s.streak=(s.streak||0)+1;
+  else s.streak=1;
+  s.lastPlayDate=today;
+  saveStats(s);
+  return{stats:s,isNew,prev};
+}
+
+/* ╔═══════════════════════════════════════════╗
+   ║  LEADERBOARD DATA                         ║
+   ╚═══════════════════════════════════════════╝ */
+let lbData={daily:[],weekly:[],monthly:[]};
+let lbTab='daily';
+
+/* ╔═══════════════════════════════════════════╗
+   ║  PAGE NAVIGATION                          ║
+   ╚═══════════════════════════════════════════╝ */
+let prevPage='page-welcome';
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function gotoGame(){ showPage('page-game'); if(!board.length) startGame(); }
+function gotoRules(){ prevPage=document.querySelector('.page.active')?.id||'page-welcome'; showPage('page-rules'); }
+function goBack(){ showPage(prevPage||'page-welcome'); }
+function gotoLogin(){ loadUser(); setupLoginForm(); openOv('ov-login'); }
+
+/* ╔═══════════════════════════════════════════╗
+   ║  OVERLAYS                                 ║
+   ╚═══════════════════════════════════════════╝ */
+function openOv(id){ document.getElementById(id).classList.add('open'); }
+function closeOv(id){ document.getElementById(id).classList.remove('open'); }
+function showErr(id,msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display=''; }
+
+/* ╔═══════════════════════════════════════════╗
+   ║  ░░░ ORIGINAL V1 GAMEPLAY ENGINE ░░░     ║
+   ║  Zero changes to board logic / render /   ║
+   ║  gravity / refill / match / swap          ║
+   ╚═══════════════════════════════════════════╝ */
+
+function rnd(){ return Math.floor(Math.random()*TYPES.length); }
+
+function startGame(){
+  score=0; moves=0; level=0; selected=null; animating=false; gameEnded=false; lastScore=0;
+  board=Array.from({length:GRID},()=>Array.from({length:GRID},rnd));
+  while(hasMatches()) board=Array.from({length:GRID},()=>Array.from({length:GRID},rnd));
+  closeOv('ov-gameover');
+  render();
+  updateHUD();
+  buildMovesBar();
+  buildLegend();
+  showPage('page-game');
+}
+
+function buildLegend(){
+  document.getElementById('legend').innerHTML=
+    TYPES.map(t=>`<div class="legend-item"><span>${MEDS[t].emoji}</span>${MEDS[t].name}</div>`).join('');
+}
+
+function buildMovesBar(){
+  const rem=MAX_MOVES-moves;
+  document.getElementById('moves-bar').innerHTML=
+    Array.from({length:MAX_MOVES},(_,i)=>{
+      const used=i<moves;
+      const isLast=!used&&rem<=3;
+      return`<div class="move-dot${used?' used':''}${isLast?' last3':''}"></div>`;
+    }).join('');
+}
+
+function updateHUD(){
+  const rem=MAX_MOVES-moves;
+  document.getElementById('score').textContent=score.toLocaleString();
+  document.getElementById('level').textContent=level+1;
+  const goal=LEVEL_GOALS[Math.min(level,LEVEL_GOALS.length-1)];
+  document.getElementById('goal').textContent=`${Math.min(score,goal).toLocaleString()}/${goal.toLocaleString()}`;
+  const mv=document.getElementById('hud-moves-val');
+  mv.textContent=rem;
+  mv.className='hud-value '+(rem<=3?'danger':rem<=7?'warn':'ok');
+}
+
+/* ── render: exactly as v1, zero change ── */
+function render(){
+  const boardEl=document.getElementById('board');
+  boardEl.innerHTML='';
+  for(let r=0;r<GRID;r++){
+    for(let c=0;c<GRID;c++){
+      const t=board[r][c];
+      const med=MEDS[t];
+      const cell=document.createElement('div');
+      cell.className='cell';
+      cell.style.background=med.bg;
+      cell.style.boxShadow=`inset 0 0 0 1px ${med.color}22`;
+      cell.textContent=med.emoji;
+      cell.dataset.r=r; cell.dataset.c=c;
+      cell.addEventListener('click',()=>onCellClick(r,c));
+      if(selected&&selected[0]===r&&selected[1]===c) cell.classList.add('selected');
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+function onCellClick(r,c){
+  if(animating) return;
+  if(!selected){ selected=[r,c]; render(); return; }
+  const[sr,sc]=selected;
+  if(sr===r&&sc===c){ selected=null; render(); return; }
+  if(Math.abs(sr-r)+Math.abs(sc-c)===1){ selected=null; trySwap(sr,sc,r,c); }
+  else{ selected=[r,c]; render(); }
+}
+
+/* ── trySwap: exactly as v1 ── */
+function trySwap(r1,c1,r2,c2){
+  animating=true;
+  [board[r1][c1],board[r2][c2]]=[board[r2][c2],board[r1][c1]];
+  const matched=findMatches();
+  if(!matched.length){
+    [board[r1][c1],board[r2][c2]]=[board[r2][c2],board[r1][c1]];
+    render();
+    const cells=document.querySelectorAll('.cell');
+    [r1*GRID+c1,r2*GRID+c2].forEach(i=>{
+      cells[i].classList.add('shake');
+      setTimeout(()=>cells[i].classList.remove('shake'),350);
+    });
+    animating=false;
+    return;
+  }
+  moves++;
+  buildMovesBar();
+  updateHUD();
+  render();
+  setTimeout(()=>processMatches(),120);
+}
+
+/* ── findMatches: exactly as v1 ── */
+function findMatches(){
+  const set=new Set();
+  for(let r=0;r<GRID;r++){
+    for(let c=0;c<GRID-2;c++){
+      if(board[r][c]===board[r][c+1]&&board[r][c]===board[r][c+2]){
+        let len=3; while(c+len<GRID&&board[r][c]===board[r][c+len])len++;
+        for(let k=0;k<len;k++)set.add(`${r},${c+k}`);
+      }
+    }
+  }
+  for(let c=0;c<GRID;c++){
+    for(let r=0;r<GRID-2;r++){
+      if(board[r][c]===board[r+1][c]&&board[r][c]===board[r+2][c]){
+        let len=3; while(r+len<GRID&&board[r][c]===board[r+len][c])len++;
+        for(let k=0;k<len;k++)set.add(`${r+k},${c}`);
+      }
+    }
+  }
+  return[...set].map(s=>s.split(',').map(Number));
+}
+
+function hasMatches(){ return findMatches().length>0; }
+
+/* ── processMatches: exactly as v1 ── */
+function processMatches(){
+  const matched=findMatches();
+  if(!matched.length){ animating=false; checkGameState(); return; }
+
+  const pts=matched.length*50*(level+1);
+  score+=pts;
+  updateHUD();
+
+  const cells=document.querySelectorAll('.cell');
+  matched.forEach(([r,c])=>{ cells[r*GRID+c].classList.add('matched'); });
+
+  const messages=['HEALED! 🏥','PERFECT RX! 💊','DOSE! 💉','CRITICAL HIT! ⚡','SUPER PILL! 🌟','MEDIC! 🩺'];
+  if(matched.length>=4) showMsg(messages[Math.floor(Math.random()*messages.length)]);
+
+  setTimeout(()=>{
+    matched.forEach(([r,c])=>{ board[r][c]=-1; });
+    gravity();
+    refill();
+    render();
+    setTimeout(()=>processMatches(),200);
+  },350);
+}
+
+/* ── gravity: exactly as v1 ── */
+function gravity(){
+  for(let c=0;c<GRID;c++){
+    let empty=GRID-1;
+    for(let r=GRID-1;r>=0;r--){
+      if(board[r][c]!==-1){ board[empty][c]=board[r][c]; if(empty!==r)board[r][c]=-1; empty--; }
+    }
+    for(let r=empty;r>=0;r--)board[r][c]=-1;
+  }
+}
+
+/* ── refill: exactly as v1 ── */
+function refill(){
+  for(let r=0;r<GRID;r++) for(let c=0;c<GRID;c++) if(board[r][c]===-1) board[r][c]=rnd();
+}
+
+/* ── checkGameState: v1 + game-over guard ── */
+function checkGameState(){
+  const goal=LEVEL_GOALS[Math.min(level,LEVEL_GOALS.length-1)];
+  if(score>=goal&&level<LEVEL_GOALS.length-1){ level++; updateHUD(); showMsg('LEVEL UP! 🎉'); }
+  if(moves>=MAX_MOVES&&!gameEnded){ gameEnded=true; setTimeout(doGameOver,600); return; }
+  if(!hasPossibleMoves()){ shuffle(); showMsg('SHUFFLED! 🔀'); }
+}
+
+function hasPossibleMoves(){
+  for(let r=0;r<GRID;r++) for(let c=0;c<GRID;c++){
+    if(c+1<GRID){[board[r][c],board[r][c+1]]=[board[r][c+1],board[r][c]];if(hasMatches()){[board[r][c],board[r][c+1]]=[board[r][c+1],board[r][c]];return true;}[board[r][c],board[r][c+1]]=[board[r][c+1],board[r][c]];}
+    if(r+1<GRID){[board[r][c],board[r+1][c]]=[board[r+1][c],board[r][c]];if(hasMatches()){[board[r][c],board[r+1][c]]=[board[r+1][c],board[r][c]];return true;}[board[r][c],board[r+1][c]]=[board[r+1][c],board[r][c]];}
+  }
+  return false;
+}
+
+function shuffle(){
+  for(let r=0;r<GRID;r++) for(let c=0;c<GRID;c++){
+    const nr=Math.floor(Math.random()*GRID),nc=Math.floor(Math.random()*GRID);
+    [board[r][c],board[nr][nc]]=[board[nr][nc],board[r][c]];
+  }
+  while(hasMatches()){
+    for(let r=0;r<GRID;r++) for(let c=0;c<GRID;c++){
+      const nr=Math.floor(Math.random()*GRID),nc=Math.floor(Math.random()*GRID);
+      [board[r][c],board[nr][nc]]=[board[nr][nc],board[r][c]];
+    }
+  }
+  render();
+}
+
+/* ── showMsg: exactly as v1 ── */
+function showMsg(text){
+  const el=document.getElementById('msg');
+  el.textContent=text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),1200);
+}
+
+/* ── TOUCH SWIPE (mobile) ── */
+(function(){
+  let tR=-1,tC=-1,tX=0,tY=0;
+  document.getElementById('board').addEventListener('touchstart',e=>{
+    if(animating)return;
+    const t=e.touches[0];
+    const cell=t.target.closest('.cell');
+    if(!cell)return;
+    e.preventDefault();
+    tR=+cell.dataset.r; tC=+cell.dataset.c; tX=t.clientX; tY=t.clientY;
+    selected=[tR,tC]; render();
+  },{passive:false});
+
+  document.getElementById('board').addEventListener('touchend',e=>{
+    if(tR<0||animating)return;
+    const t=e.changedTouches[0];
+    const dx=t.clientX-tX, dy=t.clientY-tY;
+    const ax=Math.abs(dx), ay=Math.abs(dy);
+    if(Math.max(ax,ay)>16){
+      let r2=tR,c2=tC;
+      if(ax>ay) c2=dx>0?tC+1:tC-1;
+      else       r2=dy>0?tR+1:tR-1;
+      const sr=tR,sc=tC; selected=null;
+      if(r2>=0&&r2<GRID&&c2>=0&&c2<GRID) trySwap(sr,sc,r2,c2);
+      else render();
+    } else {
+      onCellClick(tR,tC);
+    }
+    tR=-1;
+  },{passive:true});
+})();
+
+/* ╔═══════════════════════════════════════════╗
+   ║  GAME OVER → fills overlay               ║
+   ╚═══════════════════════════════════════════╝ */
+function doGameOver(){
+  lastScore=score;
+  const{stats,isNew}=recordGame(score);
+  if(isNew&&stats.best>0) showBanner('🎉 NEW PERSONAL BEST! You crushed your record!');
+  fillGameOverOverlay(stats,isNew);
+  openOv('ov-gameover');
+}
+
+function getRankBadge(sc,entries){
+  if(!entries.length) return{t:'🌱 Pioneer',c:'pg'};
+  const rank=entries.filter(e=>Number(e.score)>sc).length+1;
+  const pct=rank/entries.length;
+  if(rank===1)  return{t:'👑 #1 Champion!',c:'py'};
+  if(rank<=3)   return{t:`🥈 Top 3 — #${rank}`,c:'py'};
+  if(rank<=10)  return{t:`🏅 Top 10 — #${rank}`,c:'pp'};
+  if(rank<=50)  return{t:`⭐ Top 50 — #${rank}`,c:'pc'};
+  if(rank<=100) return{t:`✨ Top 100 — #${rank}`,c:'pg'};
+  if(pct<=.01)  return{t:'🔥 Top 1%',c:'pr'};
+  if(pct<=.1)   return{t:'💪 Top 10%',c:'pp'};
+  return{t:`#${rank} Worldwide`,c:'pg'};
+}
+
+function buildInsights(sc,stats,lb){
+  const lines=[]; const isFirst=stats.totalGames===1;
+  const prevTotal=stats.totalScore-sc; const pg=stats.totalGames-1;
+  const avg=pg>0?Math.round(prevTotal/pg):0;
+  if(isFirst) lines.push('🎮 First game done! Most players improve <b>40%+ by game 5.</b> Keep going!');
+  else if(avg>0){
+    const d=sc-avg, p=Math.round(Math.abs(d)/avg*100);
+    if(d>0)    lines.push(`📈 <b>${p}% above your average!</b> You're in excellent form today.`);
+    else if(d<0) lines.push(`📉 <b>${p}% below your average.</b> You've done better — play again!`);
+  }
+  if(stats.streak>1) lines.push(`🔥 <b>${stats.streak}-day streak!</b> Consistency is the secret to the top.`);
+  const gap=stats.best-sc;
+  if(!isFirst&&gap>0&&gap<600) lines.push(`🎯 Only <b>${gap} pts from your personal best!</b> So close — one more game!`);
+  const top=lb[0];
+  if(top&&Number(top.score)>sc) lines.push(`🏆 #1 has <b>${Number(top.score).toLocaleString()} pts</b>. Save your score to compete!`);
+  if(level>=3) lines.push(`🧬 Level ${level+1} reached — <b>top 15% of players!</b>`);
+  if(!lines.length) lines.push('💊 Great game! Save your score to appear on the global leaderboard.');
+  return lines.slice(0,3).join('<br>');
+}
+
+function fillGameOverOverlay(stats,isNew){
+  const $=id=>document.getElementById(id);
+  $('go-emoji').textContent=isNew?'🏆':'⏱';
+  $('go-title').textContent=isNew?'New Personal Best!':'Game Over!';
+  $('go-sub').textContent=`You used all ${MAX_MOVES} moves`;
+  $('go-score-big').textContent=lastScore.toLocaleString()+' pts';
+  $('go-this').textContent=lastScore.toLocaleString();
+  $('go-lv').textContent=`Level ${level+1}`;
+  if(stats.totalGames>1){
+    $('go-pb').textContent=stats.best.toLocaleString()+(isNew?' 🆕':'');
+    $('go-pb-row').style.display='';
+  } else $('go-pb-row').style.display='none';
+  if(stats.streak>1){ $('go-streak').textContent=`🔥 ${stats.streak} days`; $('go-streak-row').style.display=''; }
+  else $('go-streak-row').style.display='none';
+  const all=[...(lbData.daily||[]),...(lbData.weekly||[]),...(lbData.monthly||[])];
+  const badge=getRankBadge(lastScore,all);
+  $('go-badge').innerHTML=`<span class="pill ${badge.c}">${badge.t}</span>`;
+  $('go-insights').innerHTML=buildInsights(lastScore,stats,lbData.daily||[]);
+  buildShareBtns('go-share',me?.name||'A Friend',stats.best||lastScore);
+}
+
+/* ╔═══════════════════════════════════════════╗
+   ║  LOGIN                                    ║
+   ╚═══════════════════════════════════════════╝ */
+function setupLoginForm(){
+  document.getElementById('li-err').style.display='none';
+  document.getElementById('li-btn').textContent='✅ Login & Play';
+  document.getElementById('li-btn').disabled=false;
+  if(me){
+    document.getElementById('lf-new').style.display='none';
+    document.getElementById('lf-ret').style.display='';
+    document.getElementById('li-wb').textContent=`👋 Welcome back, ${me.name}!`;
+    document.getElementById('li-phone-ret').value=me.phone;
+  } else {
+    document.getElementById('lf-new').style.display='';
+    document.getElementById('lf-ret').style.display='none';
+    document.getElementById('li-name').value='';
+    document.getElementById('li-phone-new').value='';
+  }
+}
+function loginAsNew(){
+  me=null;
+  document.getElementById('lf-new').style.display='';
+  document.getElementById('lf-ret').style.display='none';
+}
+function submitLogin(){
+  const btn=document.getElementById('li-btn');
+  let name,phone;
+  const isRet=document.getElementById('lf-ret').style.display!=='none';
+  if(isRet&&me){
+    name=me.name; phone=document.getElementById('li-phone-ret').value.trim();
+    if(!phone||phone.replace(/\D/g,'').length<7){showErr('li-err','Please enter your mobile number.');return;}
+  } else {
+    name=document.getElementById('li-name').value.trim();
+    phone=document.getElementById('li-phone-new').value.trim();
+    if(!name||name.length<2){showErr('li-err','Please enter your name (2+ characters).');return;}
+    if(!phone||phone.replace(/\D/g,'').length<7){showErr('li-err','Please enter a valid mobile number.');return;}
+  }
+  saveUserLocal(name,phone);
+  btn.textContent='✅ Logged in!'; btn.disabled=true;
+  setTimeout(()=>{ closeOv('ov-login'); gotoGame(); },400);
+}
+
+/* ╔═══════════════════════════════════════════╗
+   ║  SAVE SCORE                               ║
+   ╚═══════════════════════════════════════════╝ */
+function openSave(){
+  closeOv('ov-gameover');
+  loadUser();
+  document.getElementById('si-err').style.display='none';
+  document.getElementById('si-btn').textContent='🚀 Submit Score';
+  document.getElementById('si-btn').disabled=false;
+  if(me){
+    document.getElementById('sf-new').style.display='none';
+    document.getElementById('sf-ret').style.display='';
+    document.getElementById('si-wb').textContent=`👋 Welcome back, ${me.name}!`;
+    document.getElementById('si-phone-ret').value=me.phone;
+  } else {
+    document.getElementById('sf-new').style.display='';
+    document.getElementById('sf-ret').style.display='none';
+    document.getElementById('si-name').value='';
+    document.getElementById('si-phone-new').value='';
+  }
+  openOv('ov-save');
+}
+function saveAsNew(){
+  me=null;
+  document.getElementById('sf-new').style.display='';
+  document.getElementById('sf-ret').style.display='none';
+}
+async function doSave(){
+  const btn=document.getElementById('si-btn');
+  document.getElementById('si-err').style.display='none';
+  let name,phone;
+  const isRet=document.getElementById('sf-ret').style.display!=='none';
+  if(isRet&&me){
+    name=me.name; phone=document.getElementById('si-phone-ret').value.trim();
+    if(!phone||phone.replace(/\D/g,'').length<7){showErr('si-err','Please confirm your mobile number.');return;}
+  } else {
+    name=document.getElementById('si-name').value.trim();
+    phone=document.getElementById('si-phone-new').value.trim();
+    if(!name||name.length<2){showErr('si-err','Please enter your name.');return;}
+    if(!phone||phone.replace(/\D/g,'').length<7){showErr('si-err','Please enter a valid mobile number.');return;}
+  }
+  saveUserLocal(name,phone);
+  btn.textContent='Saving…'; btn.disabled=true;
+  try{ await postScore(name,phone,lastScore); }catch(e){ console.warn('Sheet POST failed:',e); }
+  await fetchLB().catch(()=>{});
+  btn.textContent='🚀 Submit Score'; btn.disabled=false;
+  closeOv('ov-save');
+  showRankOv(name,phone);
+}
+
+/* ╔═══════════════════════════════════════════╗
+   ║  GOOGLE SHEETS                            ║
+   ║                                           ║
+   ║  Sheet columns (A–E):                     ║
+   ║  Name | Phone | Timestamp | Score | Date  ║
+   ╚═══════════════════════════════════════════╝
+
+   APPS SCRIPT (paste into Extensions → Apps Script):
+
+   function doPost(e) {
+     var d = JSON.parse(e.postData.contents);
+     var sheet = SpreadsheetApp.getActiveSpreadsheet()
+                   .getSheetByName('Scores');
+     var ts = d.timestamp || new Date().toISOString();
+     var dt = ts.split('T')[0];
+     // Columns: Name | Phone | Timestamp | Score | Date
+     sheet.appendRow([d.name, d.phone, ts, Number(d.score), dt]);
+     return ContentService.createTextOutput('OK');
+   }
+
+   function doGet(e) {
+     var sheet = SpreadsheetApp.getActiveSpreadsheet()
+                   .getSheetByName('Scores');
+     var rows = sheet.getDataRange().getValues();
+     var now  = new Date();
+     var today = now.toISOString().split('T')[0];
+     var wk = new Date(now);
+     wk.setDate(now.getDate() - now.getDay());
+     var wkStr = wk.toISOString().split('T')[0];
+     var monStr = now.getFullYear()+'-'+
+                  String(now.getMonth()+1).padStart(2,'0');
+
+     function agg(fn) {
+       var best = {};
+       rows.slice(1).forEach(function(r) {
+         var dt = String(r[4]||'');
+         if (!fn(dt)) return;
+         var ph = String(r[1]), sc = Number(r[3]), nm = String(r[0]);
+         if (!ph) return;
+         if (!best[ph] || sc > best[ph].score)
+           best[ph] = {name:nm, phone:ph, score:sc};
+       });
+       return Object.values(best)
+         .sort(function(a,b){return b.score-a.score;})
+         .slice(0,100);
+     }
+     var result = {
+       daily:   agg(function(d){return d===today;}),
+       weekly:  agg(function(d){return d>=wkStr;}),
+       monthly: agg(function(d){return d.startsWith(monStr);})
+     };
+     return ContentService
+       .createTextOutput(JSON.stringify(result))
+       .setMimeType(ContentService.MimeType.JSON);
+   }
+*/
+/* ─────────────────────────────────────────────────────────────────
+   POST SCORE TO GOOGLE SHEET
+   Uses fetch with application/x-www-form-urlencoded.
+   This is a "simple request" — no CORS preflight triggered.
+   Apps Script reads flat params: e.parameter.name, .phone, etc.
+   ───────────────────────────────────────────────────────────────── */
+function postScore(name, phone, sc) {
+  var ts = new Date().toISOString();
+  var dt = ts.split('T')[0];
+
+  // XHR does NOT use postMessage/clone internally — no DataCloneError ever.
+  // Sends as plain text body (string) with no preflight on no-cors.
+  // Apps Script reads: e.parameter.name, .phone, .score, .timestamp, .date
+  return new Promise(function(resolve) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', SHEET_URL, true);
+    // Do NOT set Content-Type manually — let XHR set it, avoids preflight
+    xhr.onload  = function() { console.log('Score saved ✓'); resolve(); };
+    xhr.onerror = function() {
+      console.warn('XHR failed, trying GET fallback');
+      // Fallback: GET beacon — Apps Script doGet handles ?action=save
+      var img = new Image();
+      img.src = SHEET_URL
+              + '?action=save'
+              + '&name='      + encodeURIComponent(name)
+              + '&phone='     + encodeURIComponent(phone)
+              + '&score='     + encodeURIComponent(sc)
+              + '&timestamp=' + encodeURIComponent(ts)
+              + '&date='      + encodeURIComponent(dt);
+      resolve();
+    };
+    // Send as plain string — no clone, no preflight, works on ALL browsers
+    xhr.send(
+      'name='       + encodeURIComponent(name)  +
+      '&phone='     + encodeURIComponent(phone) +
+      '&score='     + encodeURIComponent(sc)    +
+      '&timestamp=' + encodeURIComponent(ts)    +
+      '&date='      + encodeURIComponent(dt)
+    );
+  });
+}
+
+function fetchLB() {
+  return new Promise(function(resolve) {
+    var cbName = '_mcLB' + Date.now();
+    var script = document.createElement('script');
+    var done   = false;
+
+    var timer = setTimeout(function() {
+      if (!done) { done = true; cleanup(); resolve(); }
+    }, 8000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      try { delete window[cbName]; } catch(e2) {}
+      try { if (script.parentNode) script.parentNode.removeChild(script); } catch(e2) {}
+    }
+
+    window[cbName] = function(data) {
+      if (!done) {
+        done = true;
+        cleanup();
+        if (data && data.daily) lbData = data;
+        resolve();
+      }
+    };
+
+    script.onerror = function() {
+      if (!done) { done = true; cleanup(); resolve(); }
+    };
+
+    script.src = SHEET_URL + '?callback=' + cbName + '&t=' + Date.now();
+    document.head.appendChild(script);
+  });
+}
+
+/* ╔═══════════════════════════════════════════╗
+   ║  LEADERBOARD OVERLAY                      ║
+   ╚═══════════════════════════════════════════╝ */
+async function openLB(){
+  openOv('ov-lb');
+  document.getElementById('lb-list').innerHTML='<div style="padding:20px;text-align:center;color:#333">Loading…</div>';
+  await fetchLB().catch(()=>{});
+  renderLB(lbTab);
+  updateRankLine();
+}
+function switchTab(tab,el){
+  lbTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderLB(tab); updateRankLine();
+}
+function renderLB(tab){
+  const data=lbData[tab]||[];
+  const list=document.getElementById('lb-list');
+  const myPhone=me?String(me.phone):null;
+  if(!data.length){
+    list.innerHTML='<div style="padding:22px;text-align:center;color:#333;font-size:14px">No scores yet for this period.<br>Be first! 🏆</div>';
+    return;
+  }
+  list.innerHTML=data.slice(0,50).map((e,i)=>{
+    const isYou=myPhone&&String(e.phone)===myPhone;
+    const rc=i===0?'g':i===1?'s':i===2?'b':'';
+    const rs=i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`;
+    return`<div class="lbr${isYou?' you':''}">
+      <div class="lbrank ${rc}">${rs}</div>
+      <div class="lbname">${esc(e.name)}${isYou?' <span class="pill pp" style="font-size:9px;padding:2px 6px">YOU</span>':''}</div>
+      <div class="lbsc">${Number(e.score).toLocaleString()}</div>
+    </div>`;
+  }).join('');
+}
+function updateRankLine(){
+  const el=document.getElementById('lb-rank-line');
+  if(!me){el.textContent='Login to see your rank here!';return;}
+  const d=lbData[lbTab]||[];
+  const i=d.findIndex(e=>String(e.phone)===String(me.phone));
+  const label=lbTab==='daily'?"Today's":lbTab==='weekly'?"This Week's":"This Month's";
+  if(i<0) el.textContent=`Save a score to appear on ${label} board!`;
+  else el.innerHTML=`You are <b style="color:#c084fc">#${i+1}</b> on ${label} leaderboard 🏅`;
+}
+
+/* ╔═══════════════════════════════════════════╗
+   ║  RANK OVERLAY                             ║
+   ╚═══════════════════════════════════════════╝ */
+function showRankOv(name,phone){
+  const all=[...(lbData.daily||[]),...(lbData.weekly||[]),...(lbData.monthly||[])];
+  const badge=getRankBadge(lastScore,all);
+  const di=(lbData.daily||[]).findIndex(e=>String(e.phone)===String(phone));
+  const wi=(lbData.weekly||[]).findIndex(e=>String(e.phone)===String(phone));
+  const mi=(lbData.monthly||[]).findIndex(e=>String(e.phone)===String(phone));
+  document.getElementById('rk-emoji').textContent=['🎉','🏆','🌟','💪','🔥','🩺'][Math.floor(Math.random()*6)];
+  document.getElementById('rk-title').textContent=badge.t;
+  let body=`You scored <b>${lastScore.toLocaleString()} pts</b>.<br>`;
+  if(di===0) body+=`You're today's <b>TOP SCORER!</b> 👑<br>`;
+  else if(di>0) body+=`Daily rank: <b>#${di+1}</b>. `;
+  if(wi>=0) body+=`Weekly: <b>#${wi+1}</b>. `;
+  if(mi>=0) body+=`Monthly: <b>#${mi+1}</b>.`;
+  body+=`<br><br>Share and challenge your friends!`;
+  document.getElementById('rk-body').innerHTML=body;
+  const stats=getStats();
+  buildShareBtns('rk-share',name,stats.best||lastScore);
+  openOv('ov-rank');
+}
+
+/* ╔═══════════════════════════════════════════╗
+   ║  SHARE BUTTONS                            ║
+   ╚═══════════════════════════════════════════╝ */
+function buildShareBtns(cid,name,top){
+  const n=esc(name||'A Friend');
+  const msg=`${n} wants to challenge you to beat their score of ${top.toLocaleString()} pts on Med Crush! 💊 Play here: ${GAME_URL}`;
+  const ig=`I scored ${top.toLocaleString()} pts on Med Crush! 💊 Can you beat me? Try: ${GAME_URL}`;
+  const fb=`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(GAME_URL)}&quote=${encodeURIComponent(msg)}`;
+  const wa=`https://wa.me/?text=${encodeURIComponent(msg)}`;
+  document.getElementById(cid).innerHTML=`
+    <button class="sbtn sfb" onclick="openLink('${fb}')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>Facebook
+    </button>
+    <button class="sbtn swa" onclick="openLink('${wa}')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>WhatsApp
+    </button>
+    <button class="sbtn sig" onclick="copyIG(${JSON.stringify(ig)})">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>Instagram
+    </button>`;
+}
+function openLink(u){window.open(u,'_blank');}
+function copyIG(t){navigator.clipboard.writeText(t).then(()=>alert('✅ Copied! Paste into your Instagram story.')).catch(()=>alert('Copy this:\n\n'+t));}
+
+/* ╔═══════════════════════════════════════════╗
+   ║  UTILS                                    ║
+   ╚═══════════════════════════════════════════╝ */
+function showBanner(text){
+  document.querySelector('.cbanner')?.remove();
+  const el=document.createElement('div'); el.className='cbanner'; el.textContent=text;
+  document.body.prepend(el); setTimeout(()=>el.remove(),3500);
+}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+/* ── INIT ── */
+loadUser();
+fetchLB().catch(()=>{});
+showPage('page-welcome');
+</script>
+</body>
+</html>
