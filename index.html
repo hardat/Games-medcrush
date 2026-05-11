@@ -659,7 +659,7 @@ function render(){
 }
 
 function onCellClick(r,c){
-  if(animating) return;
+  if(animating||gameEnded) return;
   if(!selected){ selected=[r,c]; render(); return; }
   const[sr,sc]=selected;
   if(sr===r&&sc===c){ selected=null; render(); return; }
@@ -795,7 +795,7 @@ function showMsg(text){
 (function(){
   let tR=-1,tC=-1,tX=0,tY=0;
   document.getElementById('board').addEventListener('touchstart',e=>{
-    if(animating)return;
+    if(animating||gameEnded)return;
     const t=e.touches[0];
     const cell=t.target.closest('.cell');
     if(!cell)return;
@@ -805,7 +805,7 @@ function showMsg(text){
   },{passive:false});
 
   document.getElementById('board').addEventListener('touchend',e=>{
-    if(tR<0||animating)return;
+    if(tR<0||animating||gameEnded)return;
     const t=e.changedTouches[0];
     const dx=t.clientX-tX, dy=t.clientY-tY;
     const ax=Math.abs(dx), ay=Math.abs(dy);
@@ -974,7 +974,11 @@ async function doSave(){
   }
   saveUserLocal(name,phone);
   btn.textContent='Saving…'; btn.disabled=true;
-  try{ await postScore(name,phone,lastScore); }catch(e){ console.warn('Sheet POST failed:',e); }
+  // Step 1: send score via GET (no-cors, fire and forget)
+  try{ await postScore(name,phone,lastScore); }catch(e){ console.warn('Score send failed:',e); }
+  // Step 2: wait 2s for Apps Script to finish writing the row
+  await new Promise(r=>setTimeout(r,2000));
+  // Step 3: fetch fresh leaderboard via JSONP
   await fetchLB().catch(()=>{});
   btn.textContent='🚀 Submit Score'; btn.disabled=false;
   closeOv('ov-save');
@@ -1090,6 +1094,8 @@ function fetchLB() {
       if (!done) { done = true; cleanup(); resolve(); }
     };
 
+    // JSONP fetch — different from the save GET, this uses ?callback= param
+    // Apps Script doGet sees no action=save so returns leaderboard JSON wrapped in callback
     script.src = SHEET_URL + '?callback=' + cbName + '&t=' + Date.now();
     document.head.appendChild(script);
   });
@@ -1100,7 +1106,7 @@ function fetchLB() {
    ╚═══════════════════════════════════════════╝ */
 async function openLB(){
   openOv('ov-lb');
-  document.getElementById('lb-list').innerHTML='<div style="padding:20px;text-align:center;color:#333">Loading…</div>';
+  document.getElementById('lb-list').innerHTML='<div style="padding:24px;text-align:center;color:#666;font-size:14px;">⏳ Loading leaderboard…</div>';
   await fetchLB().catch(()=>{});
   renderLB(lbTab);
   updateRankLine();
