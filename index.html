@@ -511,7 +511,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
    Google Sheet columns (in this exact order):
      A: Name | B: Phone | C: Timestamp | D: Score | E: Date
 */
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbx5xZ0SCjtsxJaLnDm3p3Bptfue8dEyu7dJcjPXdcgwL3tzTG7-wW6in6CRLg4637hjVw/exec';
+const SHEET_URL = 'https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID/exec';
 const GAME_URL  = window.location.href;
 
 /* ╔═══════════════════════════════════════════╗
@@ -1044,38 +1044,36 @@ async function doSave(){
    Apps Script reads flat params: e.parameter.name, .phone, etc.
    ───────────────────────────────────────────────────────────────── */
 function postScore(name, phone, sc) {
-  var ts = new Date().toISOString();
-  var dt = ts.split('T')[0];
+  // THE WORKING METHOD for Apps Script cross-origin POST:
+  // Send as text/plain with JSON body via fetch.
+  // text/plain = CORS simple request = no preflight = no block.
+  // Apps Script reads via e.postData.contents (not e.parameter).
+  var payload = JSON.stringify({
+    name:      name,
+    phone:     phone,
+    score:     sc,
+    timestamp: new Date().toISOString(),
+    date:      new Date().toISOString().split('T')[0]
+  });
 
-  // XHR does NOT use postMessage/clone internally — no DataCloneError ever.
-  // Sends as plain text body (string) with no preflight on no-cors.
-  // Apps Script reads: e.parameter.name, .phone, .score, .timestamp, .date
-  return new Promise(function(resolve) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', SHEET_URL, true);
-    // Do NOT set Content-Type manually — let XHR set it, avoids preflight
-    xhr.onload  = function() { console.log('Score saved ✓'); resolve(); };
-    xhr.onerror = function() {
-      console.warn('XHR failed, trying GET fallback');
-      // Fallback: GET beacon — Apps Script doGet handles ?action=save
-      var img = new Image();
-      img.src = SHEET_URL
-              + '?action=save'
-              + '&name='      + encodeURIComponent(name)
-              + '&phone='     + encodeURIComponent(phone)
-              + '&score='     + encodeURIComponent(sc)
-              + '&timestamp=' + encodeURIComponent(ts)
-              + '&date='      + encodeURIComponent(dt);
-      resolve();
-    };
-    // Send as plain string — no clone, no preflight, works on ALL browsers
-    xhr.send(
-      'name='       + encodeURIComponent(name)  +
-      '&phone='     + encodeURIComponent(phone) +
-      '&score='     + encodeURIComponent(sc)    +
-      '&timestamp=' + encodeURIComponent(ts)    +
-      '&date='      + encodeURIComponent(dt)
-    );
+  return fetch(SHEET_URL, {
+    method:  'POST',
+    mode:    'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body:    payload
+  }).then(function() {
+    console.log('Score sent to sheet OK');
+  }).catch(function(err) {
+    // Fallback: GET beacon
+    console.warn('POST failed, trying GET fallback:', err.message);
+    var img = new Image();
+    img.src = SHEET_URL
+      + '?action=save'
+      + '&name='      + encodeURIComponent(name)
+      + '&phone='     + encodeURIComponent(phone)
+      + '&score='     + encodeURIComponent(sc)
+      + '&timestamp=' + encodeURIComponent(new Date().toISOString())
+      + '&date='      + encodeURIComponent(new Date().toISOString().split('T')[0]);
   });
 }
 
