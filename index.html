@@ -1044,37 +1044,21 @@ async function doSave(){
    Apps Script reads flat params: e.parameter.name, .phone, etc.
    ───────────────────────────────────────────────────────────────── */
 function postScore(name, phone, sc) {
-  // THE WORKING METHOD for Apps Script cross-origin POST:
-  // Send as text/plain with JSON body via fetch.
-  // text/plain = CORS simple request = no preflight = no block.
-  // Apps Script reads via e.postData.contents (not e.parameter).
-  var payload = JSON.stringify({
-    name:      name,
-    phone:     phone,
-    score:     sc,
-    timestamp: new Date().toISOString(),
-    date:      new Date().toISOString().split('T')[0]
-  });
+  // Send score via GET request — zero CORS issues, no preflight, always works.
+  // Apps Script reads via e.parameter.name, e.parameter.phone, etc.
+  var ts  = new Date().toISOString();
+  var dt  = ts.split('T')[0];
+  var url = SHEET_URL
+    + '?action=save'
+    + '&name='      + encodeURIComponent(name)
+    + '&phone='     + encodeURIComponent(phone)
+    + '&score='     + encodeURIComponent(sc)
+    + '&timestamp=' + encodeURIComponent(ts)
+    + '&date='      + encodeURIComponent(dt);
 
-  return fetch(SHEET_URL, {
-    method:  'POST',
-    mode:    'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body:    payload
-  }).then(function() {
-    console.log('Score sent to sheet OK');
-  }).catch(function(err) {
-    // Fallback: GET beacon
-    console.warn('POST failed, trying GET fallback:', err.message);
-    var img = new Image();
-    img.src = SHEET_URL
-      + '?action=save'
-      + '&name='      + encodeURIComponent(name)
-      + '&phone='     + encodeURIComponent(phone)
-      + '&score='     + encodeURIComponent(sc)
-      + '&timestamp=' + encodeURIComponent(new Date().toISOString())
-      + '&date='      + encodeURIComponent(new Date().toISOString().split('T')[0]);
-  });
+  return fetch(url, { method: 'GET', mode: 'no-cors' })
+    .then(function() { console.log('Score sent OK'); })
+    .catch(function(err) { console.warn('Score send failed:', err.message); });
 }
 
 function fetchLB() {
