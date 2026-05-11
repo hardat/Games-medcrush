@@ -511,7 +511,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
    Google Sheet columns (in this exact order):
      A: Name | B: Phone | C: Timestamp | D: Score | E: Date
 */
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbx5xZ0SCjtsxJaLnDm3p3Bptfue8dEyu7dJcjPXdcgwL3tzTG7-wW6in6CRLg4637hjVw/exec';
+const SHEET_URL = 'https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID/exechttps://script.google.com/macros/s/AKfycbx5xZ0SCjtsxJaLnDm3p3Bptfue8dEyu7dJcjPXdcgwL3tzTG7-wW6in6CRLg4637hjVw/exec';
 const GAME_URL  = window.location.href;
 
 /* ╔═══════════════════════════════════════════╗
@@ -1066,39 +1066,19 @@ function postScore(name, phone, sc) {
 }
 
 function fetchLB() {
-  return new Promise(function(resolve) {
-    var cbName = '_mcLB' + Date.now();
-    var script = document.createElement('script');
-    var done   = false;
-
-    var timer = setTimeout(function() {
-      if (!done) { done = true; cleanup(); resolve(); }
-    }, 8000);
-
-    function cleanup() {
-      clearTimeout(timer);
-      try { delete window[cbName]; } catch(e2) {}
-      try { if (script.parentNode) script.parentNode.removeChild(script); } catch(e2) {}
-    }
-
-    window[cbName] = function(data) {
-      if (!done) {
-        done = true;
-        cleanup();
-        if (data && data.daily) lbData = data;
-        resolve();
+  // Plain fetch with mode:'cors' — Apps Script GET requests support CORS natively.
+  // No JSONP needed. GitHub Pages CSP blocks dynamic script injection anyway.
+  return fetch(SHEET_URL + '?t=' + Date.now(), { method: 'GET', mode: 'cors' })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data && data.daily) {
+        lbData = data;
+        console.log('Leaderboard loaded:', data.daily.length, 'daily entries');
       }
-    };
-
-    script.onerror = function() {
-      if (!done) { done = true; cleanup(); resolve(); }
-    };
-
-    // JSONP fetch — different from the save GET, this uses ?callback= param
-    // Apps Script doGet sees no action=save so returns leaderboard JSON wrapped in callback
-    script.src = SHEET_URL + '?callback=' + cbName + '&t=' + Date.now();
-    document.head.appendChild(script);
-  });
+    })
+    .catch(function(err) {
+      console.warn('fetchLB failed:', err.message);
+    });
 }
 
 /* ╔═══════════════════════════════════════════╗
