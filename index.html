@@ -208,18 +208,10 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
   <div class="wlc-icons">💊 💉 🩺 🧬 🩹 🧪</div>
   <div class="wlc-logo">MED CRUSH</div>
   <div class="wlc-sub">Match Medicine · Heal the World</div>
-  <div class="wlc-tagline">For Patients · Doctors · Everyone</div>
-
   <div class="wlc-btns">
     <button class="wb wb-primary" onclick="gotoGame()">▶&nbsp; Play Now</button>
     <button class="wb wb-outline" onclick="gotoLogin()">🏅&nbsp; Login &amp; Save Scores</button>
-    <button class="wb-text" onclick="gotoRules()">📖 How to Play &amp; Rules</button>
-  </div>
-
-  <div class="wlc-users">
-    <div class="wlc-user-badge"><span>🧑‍⚕️</span>Doctors</div>
-    <div class="wlc-user-badge"><span>🏥</span>Patients</div>
-    <div class="wlc-user-badge"><span>👨‍👩‍👧</span>Everyone</div>
+    <button class="wb wb-outline" style="border-color:#c084fc;color:#c084fc;" onclick="gotoRules()">📖 How to Play &amp; Rules</button>
   </div>
 </div>
 
@@ -285,7 +277,12 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
         <tr><td>2</td><td>1,200 pts</td><td>×2</td></tr>
         <tr><td>3</td><td>2,500 pts</td><td>×3</td></tr>
         <tr><td>4</td><td>4,500 pts</td><td>×4</td></tr>
-        <tr><td>5 (Max)</td><td>7,000 pts</td><td>×5</td></tr>
+        <tr><td>5</td><td>7,000 pts</td><td>×5</td></tr>
+        <tr><td>6</td><td>10,000 pts</td><td>×6</td></tr>
+        <tr><td>7</td><td>15,000 pts</td><td>×7</td></tr>
+        <tr><td>8</td><td>21,000 pts</td><td>×8</td></tr>
+        <tr><td>9</td><td>28,000 pts</td><td>×9</td></tr>
+        <tr><td>10 (Max)</td><td>36,000 pts</td><td>×10</td></tr>
       </table>
     </div>
 
@@ -479,6 +476,10 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
   </div>
   <div class="lb-list" id="lb-list"></div>
   <div class="divider"></div>
+  <div id="lb-share-wrap" style="display:none;margin-bottom:10px;">
+    <div style="font-size:12px;color:#666;margin-bottom:8px;text-align:center;">🏥 Challenge friends to beat your score!</div>
+    <div class="share-btns" id="lb-share-btns"></div>
+  </div>
   <button class="btn btn-p" style="width:100%;margin-bottom:10px" onclick="closeOv('ov-lb');startGame()">⚕ Play Again</button>
   <button class="btn btn-s" style="width:100%" onclick="closeOv('ov-lb')">Close</button>
 </div>
@@ -528,7 +529,7 @@ const MEDS = [
 const TYPES       = [0,1,2,3,4,5];
 const GRID        = 8;
 const MAX_MOVES   = 20;
-const LEVEL_GOALS = [500,1200,2500,4500,7000];
+const LEVEL_GOALS = [500,1200,2500,4500,7000,10000,15000,21000,28000,36000];
 
 /* ╔═══════════════════════════════════════════╗
    ║  GAME STATE — identical to original v1    ║
@@ -1090,6 +1091,15 @@ async function openLB(){
   await fetchLB().catch(()=>{});
   renderLB(lbTab);
   updateRankLine();
+  // Show share buttons in leaderboard if user is known
+  const shareWrap=document.getElementById('lb-share-wrap');
+  if(me&&me.name){
+    const stats=getStats();
+    buildShareBtns('lb-share-btns', me.name, stats.best||lastScore||0);
+    shareWrap.style.display='';
+  } else {
+    shareWrap.style.display='none';
+  }
 }
 function switchTab(tab,el){
   lbTab=tab;
@@ -1105,8 +1115,8 @@ function renderLB(tab){
     list.innerHTML='<div style="padding:22px;text-align:center;color:#333;font-size:14px">No scores yet for this period.<br>Be first! 🏆</div>';
     return;
   }
-  list.innerHTML=data.slice(0,50).map((e,i)=>{
-    const isYou=myPhone&&String(e.phone)===myPhone;
+  list.innerHTML=data.slice(0,100).map((e,i)=>{
+    const isYou=myPhone&&String(e.phone)===myPhone&&(!me.name||esc(e.name)===esc(me.name));
     const rc=i===0?'g':i===1?'s':i===2?'b':'';
     const rs=i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`;
     return`<div class="lbr${isYou?' you':''}">
@@ -1120,7 +1130,7 @@ function updateRankLine(){
   const el=document.getElementById('lb-rank-line');
   if(!me){el.textContent='Login to see your rank here!';return;}
   const d=lbData[lbTab]||[];
-  const i=d.findIndex(e=>String(e.phone)===String(me.phone));
+  const i=d.findIndex(e=>String(e.phone)===String(me.phone)&&(!me.name||e.name===me.name));
   const label=lbTab==='daily'?"Today's":lbTab==='weekly'?"This Week's":"This Month's";
   if(i<0) el.textContent=`Save a score to appear on ${label} board!`;
   else el.innerHTML=`You are <b style="color:#c084fc">#${i+1}</b> on ${label} leaderboard 🏅`;
@@ -1132,9 +1142,10 @@ function updateRankLine(){
 function showRankOv(name,phone){
   const all=[...(lbData.daily||[]),...(lbData.weekly||[]),...(lbData.monthly||[])];
   const badge=getRankBadge(lastScore,all);
-  const di=(lbData.daily||[]).findIndex(e=>String(e.phone)===String(phone));
-  const wi=(lbData.weekly||[]).findIndex(e=>String(e.phone)===String(phone));
-  const mi=(lbData.monthly||[]).findIndex(e=>String(e.phone)===String(phone));
+  const myName=me?me.name:'';
+  const di=(lbData.daily||[]).findIndex(e=>String(e.phone)===String(phone)&&(!myName||e.name===myName));
+  const wi=(lbData.weekly||[]).findIndex(e=>String(e.phone)===String(phone)&&(!myName||e.name===myName));
+  const mi=(lbData.monthly||[]).findIndex(e=>String(e.phone)===String(phone)&&(!myName||e.name===myName));
   document.getElementById('rk-emoji').textContent=['🎉','🏆','🌟','💪','🔥','🩺'][Math.floor(Math.random()*6)];
   document.getElementById('rk-title').textContent=badge.t;
   let body=`You scored <b>${lastScore.toLocaleString()} pts</b>.<br>`;
