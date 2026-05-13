@@ -93,6 +93,9 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
   flex:1;}
 .g-tbtn{background:none;border:1px solid #2a2a4a;color:#777;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .g-tbtn:active{background:#1a1a2e;}
+/* Mute button */
+#btn-mute{font-size:18px;padding:4px 8px;border:none;background:none;cursor:pointer;line-height:1;border-radius:10px;transition:transform .15s;}
+#btn-mute:active{transform:scale(.9);}
 
 /* HUD */
 .hud{display:flex;gap:8px;margin-bottom:10px;width:100%;max-width:480px;}
@@ -416,6 +419,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
     <span class="g-title">💊 MED CRUSH</span>
     <button class="g-tbtn" onclick="openLB()">🏆 Board</button>
     <button class="g-tbtn" onclick="gotoRules()">📖 Rules</button>
+    <button id="btn-mute" onclick="toggleMute()" title="Mute/Unmute">🔊</button>
     <button class="g-tbtn" onclick="showPage('page-welcome')">⌂</button>
   </div>
 
@@ -685,6 +689,7 @@ function rnd(){ return Math.floor(Math.random()*TYPES.length); }
 
 function startGame(){
   score=referralBonus; moves=0; level=0; selected=null; animating=false; gameEnded=false; lastScore=0;
+  setTimeout(sndNewGame, 100);
   if(referralBonus>0){
     setTimeout(()=>showMsg('🎁 +'+referralBonus+' Referral Bonus!'),400);
     referralBonus=0; // only once
@@ -749,7 +754,7 @@ function render(){
 function onCellClick(r,c){
   if(animating||gameEnded) return;
   if(r<0||r>=GRID||c<0||c>=GRID) return;
-  if(!selected){ selected=[r,c]; render(); return; }
+  if(!selected){ selected=[r,c]; sndSelect(); render(); return; }
   const[sr,sc]=selected;
   if(sr===r&&sc===c){ selected=null; render(); return; }
   if(Math.abs(sr-r)+Math.abs(sc-c)===1){ selected=null; trySwap(sr,sc,r,c); }
@@ -772,6 +777,7 @@ function trySwap(r1,c1,r2,c2){
   if(!matched.length){
     [board[r1][c1],board[r2][c2]]=[board[r2][c2],board[r1][c1]];
     render();
+    sndInvalid();
     const cells=document.querySelectorAll('.cell');
     [r1*GRID+c1,r2*GRID+c2].forEach(i=>{
       cells[i].classList.add('shake');
@@ -781,8 +787,10 @@ function trySwap(r1,c1,r2,c2){
     return;
   }
   moves++;
+  _cascadeDepth = 0;
   buildMovesBar();
   updateHUD();
+  sndSwap();
   render();
   setTimeout(()=>processMatches(),120);
 }
@@ -812,13 +820,24 @@ function findMatches(){
 function hasMatches(){ return findMatches().length>0; }
 
 /* ── processMatches: exactly as v1 ── */
+let _cascadeDepth = 0; // tracks how deep into a chain we are
 function processMatches(){
   const matched=findMatches();
-  if(!matched.length){ animating=false; checkGameState(); return; }
+  if(!matched.length){
+    _cascadeDepth = 0; // reset on chain end
+    animating=false; checkGameState(); return;
+  }
 
   const pts=matched.length*50*(level+1);
   score+=pts;
   updateHUD();
+
+  if (_cascadeDepth === 0) {
+    sndMatch(matched.length);   // first match: pop sound
+  } else {
+    sndChain(_cascadeDepth);    // cascade: ascending bubbly chime
+  }
+  _cascadeDepth++;
 
   const cells=document.querySelectorAll('.cell');
   matched.forEach(([r,c])=>{ cells[r*GRID+c].classList.add('matched'); });
@@ -854,9 +873,9 @@ function refill(){
 /* ── checkGameState: v1 + game-over guard ── */
 function checkGameState(){
   const goal=LEVEL_GOALS[Math.min(level,LEVEL_GOALS.length-1)];
-  if(score>=goal&&level<LEVEL_GOALS.length-1){ level++; updateHUD(); showMsg('LEVEL UP! 🎉'); }
+  if(score>=goal&&level<LEVEL_GOALS.length-1){ level++; updateHUD(); sndLevelUp(); showMsg('LEVEL UP! 🎉'); }
   if(moves>=MAX_MOVES&&!gameEnded){ gameEnded=true; setTimeout(doGameOver,600); return; }
-  if(!hasPossibleMoves()){ shuffle(); showMsg('SHUFFLED! 🔀'); }
+  if(!hasPossibleMoves()){ shuffle(); sndNewGame(); showMsg('SHUFFLED! 🔀'); }
 }
 
 function hasPossibleMoves(){
@@ -1018,6 +1037,7 @@ function cellFromPoint(x, y){
    ╚═══════════════════════════════════════════╝ */
 function doGameOver(){
   lastScore=score;
+  sndGameOver();
   const{stats,isNew}=recordGame(score);
   if(isNew&&stats.best>0) showBanner('🎉 NEW PERSONAL BEST! You crushed your record!');
   fillGameOverOverlay(stats,isNew);
@@ -1524,12 +1544,291 @@ function buildReferralURL(name){
 }
 
 /* ── INIT ── */
+/* ══════════════════════════════════════════════════════════════
+   SOUND ENGINE — Candy Crush inspired
+   Character: bubbly, sweet, satisfying pops & chimes.
+   Uses Web Audio API oscillators + FM synthesis + filtered noise.
+   No external files. All generated in real-time.
+══════════════════════════════════════════════════════════════ */
+let _actx  = null;
+let _muted = false;
+
+function getCtx() {
+  if (!_actx) {
+    try { _actx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { return null; }
+  }
+  if (_actx.state === 'suspended') _actx.resume();
+  return _actx;
+}
+
+function toggleMute() {
+  _muted = !_muted;
+  ls.set('mc_muted', _muted);
+  document.getElementById('btn-mute').textContent = _muted ? '🔇' : '🔊';
+}
+
+function loadMutePref() {
+  _muted = ls.get('mc_muted') || false;
+  const b = document.getElementById('btn-mute');
+  if (b) b.textContent = _muted ? '🔇' : '🔊';
+}
+
+/* ── Master volume node ───────────────────────────── */
+function masterOut(ctx) {
+  const master = ctx.createGain();
+  master.gain.value = 0.55; // overall game volume
+  master.connect(ctx.destination);
+  return master;
+}
+
+/* ── Low-level helpers ────────────────────────────── */
+function osc(ctx, out, type, freq, startT, endT, vol, freqEnd) {
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, startT);
+  if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, endT);
+  g.gain.setValueAtTime(0, startT);
+  g.gain.linearRampToValueAtTime(vol, startT + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, endT);
+  o.connect(g); g.connect(out);
+  o.start(startT); o.stop(endT + 0.02);
+}
+
+function noiseBuffer(ctx) {
+  const buf  = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function filteredNoise(ctx, out, filterType, filterFreq, startT, endT, vol) {
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer(ctx);
+  src.loop = true;
+  const filt = ctx.createBiquadFilter();
+  filt.type = filterType; filt.frequency.value = filterFreq; filt.Q.value = 8;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vol, startT);
+  g.gain.exponentialRampToValueAtTime(0.0001, endT);
+  src.connect(filt); filt.connect(g); g.connect(out);
+  src.start(startT); src.stop(endT + 0.02);
+}
+
+/* ════════════════════════════════════════════════════
+   CANDY CRUSH INSPIRED SOUNDS
+════════════════════════════════════════════════════ */
+
+/* 1. SELECT — soft bubbly "bloop" (like CC tile tap) */
+function sndSelect() {
+  if (_muted) return;
+  const ctx = getCtx(); if (!ctx) return;
+  const out = masterOut(ctx);
+  const t   = ctx.currentTime;
+  // Short sine sweep up — "bloop"
+  osc(ctx, out, 'sine', 380, t, t + 0.12, 0.28, 560);
+  // Subtle harmonic
+  osc(ctx, out, 'sine', 760, t + 0.01, t + 0.09, 0.08, 1000);
+}
+
+/* 2. SWAP — quick whoosh with pitch sweep */
+function sndSwap() {
+  if (_muted) return;
+  const ctx = getCtx(); if (!ctx) return;
+  const out = masterOut(ctx);
+  const t   = ctx.currentTime;
+  // Swoosh — triangle sweep
+  osc(ctx, out, 'triangle', 250, t, t + 0.18, 0.22, 500);
+  // High shimmer
+  osc(ctx, out, 'sine', 900, t, t + 0.12, 0.09, 1400);
+  // Wind noise
+  filteredNoise(ctx, out, 'bandpass', 600, t, t + 0.15, 0.06);
+}
+
+/* 3. INVALID SWAP — dull thud + low buzz */
+function sndInvalid() {
+  if (_muted) return;
+  const ctx = getCtx(); if (!ctx) return;
+  const out = masterOut(ctx);
+  const t   = ctx.currentTime;
+  // Low thud
+  osc(ctx, out, 'sine', 130, t, t + 0.22, 0.4, 80);
+  // Buzz
+  osc(ctx, out, 'sawtooth', 160, t, t + 0.18, 0.15, 100);
+  // Noise thump
+  filteredNoise(ctx, out, 'lowpass', 200, t, t + 0.18, 0.12);
+}
+
+/* 4. MATCH POP — satisfying candy pop, pitch rises with match size */
+function sndMatch(matchSize) {
+  if (_muted) return;
+  const ctx = getCtx(); if (!ctx) return;
+  const out = masterOut(ctx);
+  const t   = ctx.currentTime;
+
+  // Base frequency scales with match count (3→5+)
+  const base = 500 + (matchSize - 3) * 120; // 500, 620, 740, 860...
+
+  // FM-style "plop" — modulator
+  const mod = ctx.createOscillator();
+  const modG = ctx.createGain();
+  mod.frequency.value = base * 2.1;
+  modG.gain.setValueAtTime(base * 3, t);
+  modG.gain.exponentialRampToValueAtTime(0.5, t + 0.15);
+  mod.connect(modG);
+
+  // Carrier
+  const car  = ctx.createOscillator();
+  const carG = ctx.createGain();
+  modG.connect(car.frequency);
+  car.type = 'sine';
+  car.frequency.setValueAtTime(base, t);
+  car.frequency.exponentialRampToValueAtTime(base * 1.6, t + 0.04);
+  car.frequency.exponentialRampToValueAtTime(base * 0.8, t + 0.18);
+  carG.gain.setValueAtTime(0, t);
+  carG.gain.linearRampToValueAtTime(0.5, t + 0.01);
+  carG.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  car.connect(carG); carG.connect(out);
+  mod.start(t); car.start(t); mod.stop(t + 0.25); car.stop(t + 0.25);
+
+  // High pop transient (the "candy crunch")
+  osc(ctx, out, 'square', base * 1.5, t, t + 0.06, 0.12, base * 2.5);
+
+  // Sparkle shimmer (very short)
+  filteredNoise(ctx, out, 'bandpass', 3000 + matchSize * 500, t, t + 0.07, 0.08);
+
+  // For 5+ match — extra "wow" chime
+  if (matchSize >= 5) {
+    osc(ctx, out, 'sine', 1047, t + 0.05, t + 0.3, 0.2, 1568);
+    osc(ctx, out, 'sine', 2093, t + 0.08, t + 0.25, 0.1, 2637);
+  }
+}
+
+/* 5. CASCADE / CHAIN — bubbly ascending notes (CC's cascade sound) */
+let _chainCount = 0;
+function sndChain(chainNum) {
+  if (_muted) return;
+  const ctx = getCtx(); if (!ctx) return;
+  const out = masterOut(ctx);
+  const t   = ctx.currentTime;
+
+  // Pentatonic scale: C D E G A (sounds happy & musical)
+  const pentatonic = [523, 587, 659, 784, 880, 1047, 1175, 1319];
+  const numNotes   = Math.min(chainNum + 1, 5);
+
+  for (let i = 0; i < numNotes; i++) {
+    const freq = pentatonic[i];
+    // Each note: FM plop, staggered
+    const delay = i * 0.075;
+    const nt    = t + delay;
+
+    // Bell-like FM tone
+    const mod2  = ctx.createOscillator();
+    const modG2 = ctx.createGain();
+    mod2.frequency.value = freq * 3;
+    modG2.gain.setValueAtTime(freq * 2, nt);
+    modG2.gain.exponentialRampToValueAtTime(1, nt + 0.1);
+    mod2.connect(modG2);
+
+    const car2  = ctx.createOscillator();
+    const carG2 = ctx.createGain();
+    modG2.connect(car2.frequency);
+    car2.type = 'sine';
+    car2.frequency.setValueAtTime(freq, nt);
+    carG2.gain.setValueAtTime(0, nt);
+    carG2.gain.linearRampToValueAtTime(0.35, nt + 0.012);
+    carG2.gain.exponentialRampToValueAtTime(0.0001, nt + 0.28);
+    car2.connect(carG2); carG2.connect(out);
+
+    mod2.start(nt); car2.start(nt); mod2.stop(nt + 0.32); car2.stop(nt + 0.32);
+
+    // Sparkle on each note
+    filteredNoise(ctx, out, 'bandpass', 3000 + i * 600, nt, nt + 0.06, 0.05);
+  }
+}
+
+/* 6. LEVEL UP — triumphant candy crush style fanfare */
+function sndLevelUp() {
+  if (_muted) return;
+  const ctx = getCtx(); if (!ctx) return;
+  const out = masterOut(ctx);
+  const t   = ctx.currentTime;
+
+  // Rising arpeggio: C4 E4 G4 C5 E5
+  const melody = [261, 329, 392, 523, 659];
+  melody.forEach((freq, i) => {
+    const nt = t + i * 0.1;
+    // FM bell
+    const mod = ctx.createOscillator();
+    const modG = ctx.createGain();
+    mod.frequency.value = freq * 2;
+    modG.gain.setValueAtTime(freq * 1.5, nt);
+    modG.gain.exponentialRampToValueAtTime(1, nt + 0.15);
+    mod.connect(modG);
+    const car = ctx.createOscillator();
+    const carG = ctx.createGain();
+    modG.connect(car.frequency);
+    car.type = 'triangle';
+    car.frequency.setValueAtTime(freq, nt);
+    carG.gain.setValueAtTime(0, nt);
+    carG.gain.linearRampToValueAtTime(0.4, nt + 0.01);
+    carG.gain.exponentialRampToValueAtTime(0.0001, nt + 0.35);
+    car.connect(carG); carG.connect(out);
+    mod.start(nt); car.start(nt); mod.stop(nt + 0.38); car.stop(nt + 0.38);
+  });
+
+  // Final chord sparkle
+  [523, 659, 784].forEach((f, i) => {
+    osc(ctx, out, 'sine', f, t + 0.52, t + 0.9, 0.18, f * 1.1);
+  });
+
+  // Bass boom
+  osc(ctx, out, 'sine', 80, t, t + 0.5, 0.35, 60);
+  filteredNoise(ctx, out, 'bandpass', 4000, t + 0.5, t + 0.75, 0.1);
+}
+
+/* 7. GAME OVER — soft sad descending melody */
+function sndGameOver() {
+  if (_muted) return;
+  const ctx = getCtx(); if (!ctx) return;
+  const out = masterOut(ctx);
+  const t   = ctx.currentTime;
+
+  // Descending: E4 D4 C4 A3 (minor feel)
+  const melody = [329, 294, 261, 220];
+  melody.forEach((freq, i) => {
+    const nt = t + i * 0.22;
+    osc(ctx, out, 'triangle', freq, nt, nt + 0.35, 0.25, freq * 0.92);
+    osc(ctx, out, 'sine',     freq * 2, nt, nt + 0.2, 0.08, freq * 1.8);
+  });
+
+  // Low thud at start
+  osc(ctx, out, 'sine', 90, t, t + 0.4, 0.3, 60);
+  filteredNoise(ctx, out, 'lowpass', 300, t, t + 0.25, 0.1);
+}
+
+/* 8. NEW GAME / SHUFFLE — cheerful quick burst */
+function sndNewGame() {
+  if (_muted) return;
+  const ctx = getCtx(); if (!ctx) return;
+  const out = masterOut(ctx);
+  const t   = ctx.currentTime;
+
+  // Three rising "bloop" notes
+  [392, 523, 659].forEach((freq, i) => {
+    const nt = t + i * 0.08;
+    osc(ctx, out, 'sine', freq * 0.8, nt, nt + 0.18, 0.25, freq * 1.15);
+    filteredNoise(ctx, out, 'bandpass', freq * 3, nt, nt + 0.07, 0.04);
+  });
+}
 function joinWAGroup(){
   // Replace this URL with your actual WhatsApp community/group invite link
   window.open('https://chat.whatsapp.com/YOUR_GROUP_INVITE_CODE','_blank');
 }
 
 loadUser();
+loadMutePref();
 fetchLB().then(()=>{ showYesterdayChamp(); }).catch(()=>{});
 checkReferral();
 showPage('page-welcome');
