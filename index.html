@@ -283,7 +283,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
      PAGE 1 — WELCOME
 ══════════════════════════════════════ -->
 <div id="page-welcome" class="page active">
-  <div class="wlc-icons">💊 💉 🩺 🧬 🩹 🧪</div>
+  <div class="wlc-icons">💊 💉 ⚪️ 🧬 🩹 🧪</div>
   <div class="wlc-logo">MED CRUSH</div>
   <div class="wlc-sub">Match Medicine · Heal the World</div>
   <!-- Yesterday's champion banner (populated by JS) -->
@@ -336,7 +336,7 @@ body{font-family:'Segoe UI',sans-serif;background:#0a0a1a;color:#fff;min-height:
         <tr><th>Icon</th><th>Name</th><th>Colour</th></tr>
         <tr><td>💊</td><td>Pill</td><td style="color:#ff6b9d">Hot Pink</td></tr>
         <tr><td>💉</td><td>Syringe</td><td style="color:#00d4ff">Cyan</td></tr>
-        <tr><td>🩺</td><td>Stethoscope</td><td style="color:#c084fc">Purple</td></tr>
+        <tr><td>⚪️</td><td>Tablet</td><td style="color:#c084fc">Purple</td></tr>
         <tr><td>🧬</td><td>Vaccine / DNA</td><td style="color:#4ade80">Green</td></tr>
         <tr><td>🩹</td><td>Bandage</td><td style="color:#fb923c">Orange</td></tr>
         <tr><td>🧪</td><td>Test Tube</td><td style="color:#facc15">Yellow</td></tr>
@@ -607,7 +607,7 @@ const GAME_URL  = window.location.href;
 const MEDS = [
   { emoji:'💊', name:'Pill',         color:'#ff6b9d', bg:'#2a1020' },
   { emoji:'💉', name:'Syringe',      color:'#00d4ff', bg:'#001a2a' },
-  { emoji:'🩺', name:'Stethoscope',  color:'#c084fc', bg:'#1a0a2a' },
+  { emoji:'⚪️', name:'Tablet',        color:'#c084fc', bg:'#1a0a2a' },
   { emoji:'🧬', name:'Vaccine/DNA',  color:'#4ade80', bg:'#0a2010' },
   { emoji:'🩹', name:'Bandage',      color:'#fb923c', bg:'#2a1000' },
   { emoji:'🧪', name:'Test Tube',    color:'#facc15', bg:'#2a2000' },
@@ -842,7 +842,7 @@ function processMatches(){
   const cells=document.querySelectorAll('.cell');
   matched.forEach(([r,c])=>{ cells[r*GRID+c].classList.add('matched'); });
 
-  const messages=['HEALED! 🏥','PERFECT RX! 💊','DOSE! 💉','CRITICAL HIT! ⚡','SUPER PILL! 🌟','MEDIC! 🩺'];
+  const messages=['HEALED! 🏥','PERFECT RX! 💊','DOSE! 💉','CRITICAL HIT! ⚡','SUPER PILL! 🌟','MEDIC! ⚪️'];
   if(matched.length>=4) showMsg(messages[Math.floor(Math.random()*messages.length)]);
 
   setTimeout(()=>{
@@ -1355,7 +1355,7 @@ function showRankOv(name,phone){
   const di=(lbData.daily||[]).findIndex(e=>String(e.phone)===String(phone)&&(!myName||e.name===myName));
   const wi=(lbData.weekly||[]).findIndex(e=>String(e.phone)===String(phone)&&(!myName||e.name===myName));
   const mi=(lbData.monthly||[]).findIndex(e=>String(e.phone)===String(phone)&&(!myName||e.name===myName));
-  document.getElementById('rk-emoji').textContent=['🎉','🏆','🌟','💪','🔥','🩺'][Math.floor(Math.random()*6)];
+  document.getElementById('rk-emoji').textContent=['🎉','🏆','🌟','💪','🔥','⚪️'][Math.floor(Math.random()*6)];
   document.getElementById('rk-title').textContent=badge.t;
   let body=`You scored <b>${lastScore.toLocaleString()} pts</b>.<br>`;
   if(di===0) body+=`You're today's <b>TOP SCORER!</b> 👑<br>`;
