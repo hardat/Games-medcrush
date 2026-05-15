@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="manifest" href="manifest.json">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Med Crush — Match Medicine, Beat the World!</title>
@@ -1833,5 +1834,6 @@ fetchLB().then(()=>{ showYesterdayChamp(); }).catch(()=>{});
 checkReferral();
 showPage('page-welcome');
 </script>
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </body>
 </html>
