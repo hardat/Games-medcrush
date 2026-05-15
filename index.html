@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="manifest" href="manifest.json">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Med Crush — Match Medicine, Beat the World!</title>
@@ -1833,7 +1832,39 @@ loadMutePref();
 fetchLB().then(()=>{ showYesterdayChamp(); }).catch(()=>{});
 checkReferral();
 showPage('page-welcome');
+
+// ── PWA Service Worker (must be inside script tag) ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js')
+      .then(()=> console.log('SW registered ✓'))
+      .catch(err => console.log('SW error:', err));
+  });
+}
 </script>
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+<!-- iOS PWA: tap the banner below to install -->
+<div id="ios-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1a1a2e;border-top:1px solid #c084fc;padding:14px 16px;z-index:500;display:flex;align-items:center;gap:12px;">
+  <span style="font-size:28px;">💊</span>
+  <div style="flex:1;">
+    <div style="font-size:13px;font-weight:700;color:#fff;">Install Med Crush</div>
+    <div style="font-size:11px;color:#888;">Tap <b style="color:#c084fc;">Share ↑</b> then <b style="color:#c084fc;">Add to Home Screen</b></div>
+  </div>
+  <button onclick="this.parentElement.style.display='none'" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;">✕</button>
+</div>
+
+<script>
+// Show iOS install banner only on iOS Safari when not already installed
+(function(){
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isStandalone = window.navigator.standalone === true;
+  var banner = document.getElementById('ios-install-banner');
+  if (isIOS && !isStandalone && banner) {
+    // Show after 30 seconds on the site
+    setTimeout(function(){ banner.style.display = 'flex'; }, 30000);
+  }
+})();
+</script>
+
 </body>
 </html>
